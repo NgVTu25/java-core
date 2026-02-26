@@ -8,6 +8,8 @@ public class Main{
         BlockingQueue<String> queue = new ArrayBlockingQueue<>(3);
 
         Producer producer = new Producer(queue);
+        Producer producer1 = new Producer(queue);
+
         Consumer consumer = new Consumer(queue);
         Consumer consumer2 = new Consumer(queue);
         Consumer consumer3 = new Consumer(queue);
