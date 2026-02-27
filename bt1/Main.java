@@ -5,10 +5,11 @@ import java.util.concurrent.BlockingQueue;
 
 public class Main{
     public static void main(String[] args) throws Exception {
-        BlockingQueue<String> queue = new ArrayBlockingQueue<>(3);
+        int number_of_Threads = 10;
+        BlockingQueue<String> queue = new ArrayBlockingQueue<>(number_of_Threads);
 
-        Producer producer = new Producer(queue);
-        Producer producer1 = new Producer(queue);
+        Producer producer = new Producer(queue, number_of_Threads);
+        Producer producer1 = new Producer(queue, number_of_Threads);
 
         Consumer consumer = new Consumer(queue);
         Consumer consumer2 = new Consumer(queue);
