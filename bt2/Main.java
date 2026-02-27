@@ -41,7 +41,7 @@ public class Main {
                 }
             }
             if (number_of_Threads != 1) {
-                ThreadSort threadSort = new ThreadSort(arr, 0, arr.length - 1);
+               new ThreadSort(arr, 0, arr.length - 1);
             }
         long endTime = System.currentTimeMillis();
             long Time = endTime - startTime;
