@@ -40,7 +40,7 @@ public class Main {
                     throw new RuntimeException(e);
                 }
             }
-
+        new Thread(new ThreadSort(arr, 0, arr.length - 1)).start();
         long endTime = System.currentTimeMillis();
             long Time = endTime - startTime;
 
