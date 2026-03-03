@@ -9,7 +9,6 @@ public class Main{
         BlockingQueue<String> queue = new ArrayBlockingQueue<>(number_of_Threads);
 
         Producer producer = new Producer(queue, number_of_Threads);
-        Producer producer1 = new Producer(queue, number_of_Threads);
 
         Consumer consumer = new Consumer(queue);
         Consumer consumer2 = new Consumer(queue);
