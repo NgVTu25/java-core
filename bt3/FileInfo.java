@@ -1,24 +1,24 @@
 package bt3;
 
-import java.io.File;
+import java.io.Serializable;
 
-public class FileInfo {
+public class FileInfo implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private String destinationDirectory;
-    private String sourceDirectory;
-    private String filename;
-    private long fileSize;
-    private int piecesOfFile;
-    private int lastByteLength;
-    private byte[] dataBytes;
-    private String status;
-
+    public String destinationDirectory;
+    public String sourceDirectory;
+    public String filename;
+    public long fileSize;
+    public int piecesOfFile;
+    public int lastByteLength;
+    public byte[] dataBytes;
+    public String status;
 
 
     public FileInfo() {
 
     }
+
 
     public String getDestinationDirectory() {
         return destinationDirectory;

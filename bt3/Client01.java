@@ -3,12 +3,12 @@ package bt3;
 import java.io.*;
 import java.net.Socket;
 
-public class Client implements Runnable{
+public class Client01 implements Runnable{
     private Socket socket;
     private ObjectInputStream is;
     private ObjectOutputStream os;
 
-    public Client() {
+    public Client01() {
     }
 
     @Override
@@ -67,7 +67,7 @@ public class Client implements Runnable{
     }
 
     public static void main(String[] args) {
-        new Client().run();
+        new Client01().run();
     }
 }
 

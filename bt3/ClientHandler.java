@@ -1,106 +1,66 @@
 package bt3;
 
 import java.io.*;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 
-import static bt3.Server.broadcast;
-
-
 public class ClientHandler implements Runnable {
     private Socket socket;
+    private ServerSocket server;
     private BlockingQueue<Socket> queue;
-    private DataOutputStream os;
-    private DataInputStream is;
+    private ObjectOutputStream os;
+    private ObjectInputStream is;
     private ConfigReader config;
     private int id;
 
-    public  ClientHandler(Socket socket, BlockingQueue<Socket> queue) {
+    public ClientHandler(Socket socket, ServerSocket server, BlockingQueue<Socket> queue, int id) {
         this.socket = socket;
+        this.server = server;
         this.queue = queue;
+        this.id = id;
         try {
-            this.os = new DataOutputStream(socket.getOutputStream());
+            this.os = new ObjectOutputStream(socket.getOutputStream());
+            this.os.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
         config = ConfigReader.getInstance();
     }
 
-    public boolean handleFileAction(String action, String sourceFilePath) {
-        String destinationDir = config.getConfig("download.path");
-        return switch (action) {
-            case "SAVE" -> {
-                try {
-                    config = ConfigReader.getInstance();
-                    FileOutputStream fos = new FileOutputStream(config.getConfig("download.path"));
-                    yield true;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    yield false;
-                }
-            }
-
-            case "SEND" -> {
-                try {
-                    sendFile(sourceFilePath, destinationDir);
-                    yield true;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    yield false;
-                }
-            }
-            case "GET_INFO" -> {
-                FileInfo f = getFileInfo(sourceFilePath, destinationDir);
-                f.toString();
-                yield (f != null);
-            }
-            default -> {
-                System.err.println("Unknown action: " + action);
-                yield false;
-            }
-        };
-    }
-
-
     @Override
     public void run() {
-        StringBuilder stringBuilder = new StringBuilder();
-        String action;
         try {
-            is = new DataInputStream(socket.getInputStream());
+            is = new ObjectInputStream(socket.getInputStream());
+            FileService fileService = new FileService(socket, server, os, is);
             while (true) {
-                String str = is.readUTF();
-                if (str.equalsIgnoreCase("stop")) {
-                    break;
-                }
-                System.out.println("Type SENDFILE (Mode)");
-                if (str.equalsIgnoreCase("SENDFILE")) {
-                    System.out.println("SENDFILE MODE");
-                    do {
-                        action = is.readUTF();
-                        String sourceFilePath = is.readUTF();
-                        handleFileAction(action, sourceFilePath);
-                    } while (action.equalsIgnoreCase("NONE"));
-                }
-
-                if (str.equalsIgnoreCase("CHECK")) {
-                    File folder = new File(config.getConfig("download.path"));
-                    if (folder.isDirectory()) {
-                        String[] files = folder.list();
-                        for (String name : files) {
-                            stringBuilder.append(name).append("\n");
-                        }
+                Object receivedData = is.readObject();
+                if (receivedData instanceof String) {
+                    String str = (String) receivedData;
+                    if (str.equalsIgnoreCase("stop")) {
+                        System.out.println("Client yêu cầu ngắt kết nối.");
+                        break;
                     }
-                    broadcast(stringBuilder.toString());
+                    else if (str.equalsIgnoreCase("CHECK")) {
+                       String Data = fileService.handleCheckCommand();
+                       sendMessage(Data);
+                    }
+                    else if (str.startsWith("DOWNLOAD:")) {
+                        String sourceFilePath = str.substring(9).trim();
+                        System.out.println("Client yêu cầu tải file: " + sourceFilePath);
+                        FileInfo fileInfo = fileService.sendFile(sourceFilePath);
+                        fileService.createFiles(fileInfo);
+                    }
+                    else {
+                        System.out.println("Client (" + socket.getRemoteSocketAddress() + "): " + str);
+                    }
                 }
-
-
-                System.out.println("Client (" + socket.getRemoteSocketAddress() + "): " + str);
-
-                broadcast("Client (" + socket.getPort() + ") says: " + str);
             }
-        } catch (IOException e) {
+        } catch (EOFException e) {
+            System.out.println("Client đã ngắt kết nối an toàn.");
+        } catch (Exception e) {
             System.out.println("Client disconnected unexpectedly: " + socket.getRemoteSocketAddress());
+            e.printStackTrace();
         } finally {
             disconnect();
         }
@@ -108,85 +68,19 @@ public class ClientHandler implements Runnable {
 
     public void sendMessage(String msg) {
         try {
-            os.writeUTF(msg);
+            os.writeObject(msg);
             os.flush();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("Lỗi khi gửi tin nhắn tới client: " + e.getMessage());
         }
-    }
-//
-//    public void getMessage() {
-//        Thread mess = new Thread( () -> {
-//            try {
-//                DataInputStream is = new DataInputStream(socket.getInputStream());
-//                while (true) {
-//                    String str = is.readUTF();
-//                    if (str.equals("stop")|| str == null) {
-//                        break;
-//                    }
-//                    System.out.println("Client: " + socket.getLocalSocketAddress() + str);
-//                }
-//            } catch (IOException e) {
-//                throw new RuntimeException(e);
-//            }
-//        });
-//        mess.start();
-//    }
-
-    public void sendFile(String sourceFilePath, String destinationDir) {
-        DataOutputStream outToServer;
-        ObjectOutputStream oos;
-        ObjectInputStream ois;
-
-        try {
-            // make greeting
-            outToServer = new DataOutputStream(
-                    socket.getOutputStream());
-            outToServer.writeUTF("Hello from "
-                    + socket.getLocalSocketAddress());
-
-            // get file info
-            FileInfo fileInfo = getFileInfo(sourceFilePath, destinationDir);
-
-            // send file
-            oos = new ObjectOutputStream(socket.getOutputStream());
-            oos.writeObject(fileInfo);
-
-            // get confirmation
-            ois = new ObjectInputStream(socket.getInputStream());
-            fileInfo = (FileInfo) ois.readObject();
-            if (fileInfo != null) {
-                System.out.println(fileInfo.getStatus());
-            }
-        } catch (IOException | ClassNotFoundException ex) {
-            ex.printStackTrace();
-        }
-    }
-
-    private FileInfo getFileInfo(String sourceFilePath, String destinationDir) {
-        FileInfo fileInfo = null;
-        BufferedInputStream bis;
-        try {
-            File sourceFile = new File(sourceFilePath);
-            bis = new BufferedInputStream(new FileInputStream(sourceFile));
-            fileInfo = new FileInfo();
-            byte[] fileBytes = new byte[(int) sourceFile.length()];
-            // get file info
-            bis.read(fileBytes, 0, fileBytes.length);
-            fileInfo.setFilename(sourceFile.getName());
-            fileInfo.setDataBytes(fileBytes);
-            fileInfo.setDestinationDirectory(destinationDir);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-        return fileInfo;
     }
 
     private void disconnect() {
         try {
             System.out.println("Closing connection for: " + socket.getRemoteSocketAddress());
-            Server.clients.remove(this); // Remove from broadcast list
-            queue.remove(socket);        // Free up space in the queue
+            // Đảm bảo class Server của bạn có List tĩnh tên là clients
+            // Server.clients.remove(this);
+            queue.remove(socket);
             if (is != null) is.close();
             if (os != null) os.close();
             if (socket != null) socket.close();
@@ -195,11 +89,6 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
 }

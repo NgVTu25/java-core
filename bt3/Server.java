@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -37,24 +38,29 @@ public class Server {
         new Thread(() -> {
             try {
                 BufferedReader br = new BufferedReader(new  InputStreamReader(System.in));
-                System.out.println("Server console ready. Type a message and hit enter to broadcast.");
-                System.out.println("Send mode to access private mode:");
+                System.out.println("Server console ready. Type a message and hit enter to broadcast or type mode to active private mode.");
                 while (true) {
+
                     String message = br.readLine();
                     if (message.equalsIgnoreCase("stop")) {
                         broadcast("Server is shutting down...");
                         broadcast("Server Admin: " + message);
                         System.exit(0);
                     }
+
                     if (message.equalsIgnoreCase("mode")) {
-                        System.out.println("Server ready for private mode...");
                         System.out.println("Enter Client ID:");
                         int id = Integer.parseInt(br.readLine());
+                        String pvm = "";
+                        while (!pvm.equalsIgnoreCase("exit")) {
+                        System.out.println("Server ready for private mode...");
                         System.out.println("Enter Message:");
-                        String pvm = br.readLine();
+                        pvm = br.readLine();
                         privateMessage(id, pvm);
+                        }
+                    } else {
+                        broadcast(message);
                     }
-                    broadcast(message);
 
                 }
             } catch (IOException e) {
@@ -63,7 +69,6 @@ public class Server {
         }).start();
     }
 
-    // Send a message to every connected client
     public static void broadcast(String message) {
         for (ClientHandler client : clients) {
             client.sendMessage(message);
@@ -83,15 +88,11 @@ public class Server {
         while (true) {
             Socket clientSocket = serverSocket.accept();
             try {
-                // If queue is full, this will block until space is available
                 queue.put(clientSocket);
                 System.out.println("Client accepted: " + clientSocket);
-
-                // Create handler and add to the broadcast list
-                ClientHandler clientHandler = new ClientHandler(clientSocket, queue);
+                ClientHandler clientHandler = new ClientHandler(clientSocket, serverSocket ,queue , queue.size());
                 clients.add(clientHandler);
 
-                // Start the handler thread (which will start listening to the client)
                 new Thread(clientHandler).start();
 
             } catch (InterruptedException e) {
