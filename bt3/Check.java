@@ -14,6 +14,7 @@ public class Check implements Command {
         List<String> fileListInfo = fileService.handleCheckCommand();
         os.writeObject(fileListInfo);
         os.flush();
+        os.reset();
         System.out.println("Đã gửi danh sách file cho Client yêu cầu.");
     }
 }

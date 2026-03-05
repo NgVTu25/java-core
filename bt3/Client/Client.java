@@ -47,7 +47,6 @@ public class Client implements Runnable{
                                 queue.put(msg);
                             } else {
                                 System.out.println("\n[Tin nhắn từ Server]: " + msg);
-                                System.out.print("Vui lòng chọn chức năng (1-5): ");
                             }
                         } else {
                             queue.put(obj);

@@ -66,7 +66,6 @@ public class FileService {
     public void requestDownload(String filename) {
         try {
             File localFile = new File("client_downloads/" + filename);
-            localFile.getParentFile().mkdirs();
             long offset = localFile.exists() ? localFile.length() : 0;
 
             CommandRequest request = new CommandRequest("DOWNLOAD", filename, offset);
@@ -145,7 +144,7 @@ public class FileService {
 
                     try (RandomAccessFile raf = new RandomAccessFile(localFile, "r")) {
                         raf.seek(offset);
-                        byte[] buffer = new byte[1024 * 64];
+                        byte[] buffer = new byte[1024 * 4];
                         int bytesRead;
 
                         System.out.println("Bắt đầu Upload...");

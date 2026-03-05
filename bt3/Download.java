@@ -29,7 +29,7 @@ public class Download implements Command {
         try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
             raf.seek(offset);
 
-            byte[] buffer = new byte[8192]; // Gửi từng cục 8KB
+            byte[] buffer = new byte[1024*4]; // Gửi từng cục 8KB
             int bytes;
 
             while ((bytes = raf.read(buffer)) != -1) {

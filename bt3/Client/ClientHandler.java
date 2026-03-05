@@ -83,17 +83,11 @@ public class ClientHandler implements Runnable {
     }
 
     private void disconnect() {
-        try {
-            System.out.println("Closing connection for: " + socket.getRemoteSocketAddress());
-            queue.remove(socket);
-            if (is != null) is.close();
-            if (os != null) os.close();
-            if (socket != null) socket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        System.out.println("Client đã ngắt kết nối: " + socket.getRemoteSocketAddress());
+        try { if (is != null) is.close(); } catch (IOException e) {}
+        try { if (os != null) os.close(); } catch (IOException e) {}
+        try { if (socket != null && !socket.isClosed()) socket.close(); } catch (IOException e) {}
     }
 
     public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
 }
