@@ -1,10 +1,12 @@
-package bt3;
+package bt3.Server;
+
+import bt3.Client.ClientHandler;
+import bt3.ConfigReader;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -38,12 +40,12 @@ public class Server {
         new Thread(() -> {
             try {
                 BufferedReader br = new BufferedReader(new  InputStreamReader(System.in));
-                System.out.println("Server console ready. Type a message and hit enter to broadcast or type mode to active private mode.");
+                System.out.println("Server đã khởi động. Nhập tin nhắn và nhấn enter để gửi tới tất cả khách hàng hoặc nhập mode để nhắn riêng.");
                 while (true) {
 
                     String message = br.readLine();
                     if (message.equalsIgnoreCase("stop")) {
-                        broadcast("Server is shutting down...");
+                        broadcast("Server đã tắt...");
                         broadcast("Server Admin: " + message);
                         System.exit(0);
                     }
@@ -53,8 +55,8 @@ public class Server {
                         int id = Integer.parseInt(br.readLine());
                         String pvm = "";
                         while (!pvm.equalsIgnoreCase("exit")) {
-                        System.out.println("Server ready for private mode...");
-                        System.out.println("Enter Message:");
+                        System.out.println("Server sẵn sàng...");
+                        System.out.println("Nhập tin nhắn:");
                         pvm = br.readLine();
                         privateMessage(id, pvm);
                         }

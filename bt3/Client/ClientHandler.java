@@ -1,4 +1,10 @@
-package bt3;
+package bt3.Client;
+
+import bt3.Command;
+import bt3.CommandControl;
+import bt3.CommandRequest;
+import bt3.ConfigReader;
+import bt3.Server.FileService;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -32,32 +38,33 @@ public class ClientHandler implements Runnable {
     public void run() {
         try {
             is = new ObjectInputStream(socket.getInputStream());
-            FileService fileService = new FileService(socket, server, os, is);
+            FileService fileService = new FileService(socket, os, is);
             while (true) {
-                Object receivedData = is.readObject();
-                if (receivedData instanceof String) {
-                    String str = (String) receivedData;
-                    if (str.equalsIgnoreCase("stop")) {
-                        System.out.println("Client yêu cầu ngắt kết nối.");
-                        break;
+                try {
+                    Object receivedData = is.readObject();
+                    if (receivedData instanceof CommandRequest) {
+                        CommandRequest request = (CommandRequest) receivedData;
+                        Command command = CommandControl.getCommand(request.getCommandType());
+
+                        if (command != null) {
+                            command.execute(request, os, is, fileService);
+                        }
+                    } else if (receivedData instanceof String) {
+                        String str = (String) receivedData;
+                        if (str.equalsIgnoreCase("stop")) {
+                            System.out.println("Client " + socket.getRemoteSocketAddress() + " yêu cầu ngắt kết nối.");
+                            break;
+                        } else {
+                            System.out.println("[Client " + socket.getRemoteSocketAddress() + " nói]: " + str);
+                        }
                     }
-                    else if (str.equalsIgnoreCase("CHECK")) {
-                       String Data = fileService.handleCheckCommand();
-                       sendMessage(Data);
-                    }
-                    else if (str.startsWith("DOWNLOAD:")) {
-                        String sourceFilePath = str.substring(9).trim();
-                        System.out.println("Client yêu cầu tải file: " + sourceFilePath);
-                        FileInfo fileInfo = fileService.sendFile(sourceFilePath);
-                        fileService.createFiles(fileInfo);
-                    }
-                    else {
-                        System.out.println("Client (" + socket.getRemoteSocketAddress() + "): " + str);
-                    }
+                } catch (Exception e) {
+                    System.out.println("Lỗi xử lý yêu cầu: " + e.getMessage());
+                    break;
                 }
             }
         } catch (EOFException e) {
-            System.out.println("Client đã ngắt kết nối an toàn.");
+            System.out.println("Client disconnected");
         } catch (Exception e) {
             System.out.println("Client disconnected unexpectedly: " + socket.getRemoteSocketAddress());
             e.printStackTrace();
@@ -78,8 +85,6 @@ public class ClientHandler implements Runnable {
     private void disconnect() {
         try {
             System.out.println("Closing connection for: " + socket.getRemoteSocketAddress());
-            // Đảm bảo class Server của bạn có List tĩnh tên là clients
-            // Server.clients.remove(this);
             queue.remove(socket);
             if (is != null) is.close();
             if (os != null) os.close();

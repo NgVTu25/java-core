@@ -1,0 +1,53 @@
+package bt3;
+
+import bt3.Server.FileChuck;
+import bt3.Server.FileService;
+
+import java.io.*;
+
+
+public class Download implements Command {
+    private ConfigReader config = ConfigReader.getInstance();
+
+
+    @Override
+    public void execute(CommandRequest commandRequest, ObjectOutputStream os, ObjectInputStream is, FileService fileService) throws IOException {
+        String filename = commandRequest.getFilename();
+        long offset = commandRequest.getOffset();
+
+        String filePath = config.getConfig("download.path") + "/" + filename;
+        File file = new File(filePath);
+
+        if (!file.exists()) {
+            FileChuck rejectChunk = new FileChuck();
+            rejectChunk.setStatus("REJECT: File không tồn tại trên server");
+            os.writeObject(rejectChunk);
+            os.flush();
+            return;
+        }
+
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+            raf.seek(offset);
+
+            byte[] buffer = new byte[8192]; // Gửi từng cục 8KB
+            int bytes;
+
+            while ((bytes = raf.read(buffer)) != -1) {
+                FileChuck chunk = new FileChuck();
+                chunk.setFileName(filename);
+                chunk.setOffset(offset);
+                chunk.setStatus("OK");
+
+                byte[] actualData = new byte[bytes];
+                System.arraycopy(buffer, 0, actualData, 0, bytes);
+                chunk.setData(actualData);
+
+                offset += bytes;
+                chunk.setCompleted(raf.getFilePointer() == raf.length());
+
+                os.writeObject(chunk);
+                os.flush();
+            }
+        }
+    }
+}
