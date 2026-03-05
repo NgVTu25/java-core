@@ -20,7 +20,6 @@ public class Upload implements Command {
 
         if (file.exists()) {
             currentOffset = file.length();
-
             if (currentOffset >= clientFileSize && clientFileSize > 0) {
                 os.writeObject("REJECT: File đã tồn tại hoàn chỉnh trên Server");
                 os.flush();

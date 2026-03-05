@@ -26,6 +26,7 @@ public class Download implements Command {
             return;
         }
 
+
         try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
             raf.seek(offset);
 

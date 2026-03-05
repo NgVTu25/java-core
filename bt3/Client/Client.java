@@ -5,6 +5,7 @@ import bt3.Server.FileService;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -79,7 +80,7 @@ public class Client implements Runnable{
                         file = br.readLine().trim();
                         if (file.isEmpty()) {
                             System.out.println("Tên file không được để trống!");
-                            break; // Dừng lại, quay về Menu
+                            break;
                         }
                         fileService.requestDownload(file);
                         break;
