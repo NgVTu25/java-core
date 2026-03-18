@@ -5,24 +5,21 @@ import bt3.CommandControl;
 import bt3.CommandRequest;
 import bt3.ConfigReader;
 import bt3.Server.FileService;
+import bt3.Server.Server;
 
 import java.io.*;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 
 public class ClientHandler implements Runnable {
-    private Socket socket;
-    private ServerSocket server;
-    private BlockingQueue<Socket> queue;
+    private final Socket socket;
+    public final BlockingQueue<Socket> queue;
     private ObjectOutputStream os;
     private ObjectInputStream is;
-    private ConfigReader config;
-    private int id;
+    private final int id;
 
-    public ClientHandler(Socket socket, ServerSocket server, BlockingQueue<Socket> queue, int id) {
+    public ClientHandler(Socket socket, BlockingQueue<Socket> queue, int id) {
         this.socket = socket;
-        this.server = server;
         this.queue = queue;
         this.id = id;
         try {
@@ -31,7 +28,7 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        config = ConfigReader.getInstance();
+        ConfigReader config = ConfigReader.getInstance();
     }
 
     @Override
@@ -42,20 +39,24 @@ public class ClientHandler implements Runnable {
             while (true) {
                 try {
                     Object receivedData = is.readObject();
-                    if (receivedData instanceof CommandRequest) {
-                        CommandRequest request = (CommandRequest) receivedData;
+                    if (receivedData instanceof CommandRequest request) {
                         Command command = CommandControl.getCommand(request.getCommandType());
 
                         if (command != null) {
                             command.execute(request, os, is, fileService);
                         }
-                    } else if (receivedData instanceof String) {
-                        String str = (String) receivedData;
-                        if (str.equalsIgnoreCase("stop")) {
+                    } else if (receivedData instanceof String str) {
+                        if (str.startsWith("PRIVATE_CHAT:")) {
+                            String[] parts = str.split(":", 3);
+                            int receiverId = Integer.parseInt(parts[1]);
+                            String chatMsg = parts[2];
+
+                            Server.privateMessage(receiverId, "[Từ Client " + this.id + "]: " + chatMsg);
+                        } else if (str.equalsIgnoreCase("stop")) {
                             System.out.println("Client " + socket.getRemoteSocketAddress() + " yêu cầu ngắt kết nối.");
                             break;
                         } else {
-                            System.out.println("[Client " + socket.getRemoteSocketAddress() + " nói]: " + str);
+                            System.out.println("[Client " + getId() + socket.getRemoteSocketAddress() + " nói]: " + str);
                         }
                     }
                 } catch (Exception e) {
@@ -63,6 +64,7 @@ public class ClientHandler implements Runnable {
                     break;
                 }
             }
+
         } catch (EOFException e) {
             System.out.println("Client disconnected");
         } catch (Exception e) {

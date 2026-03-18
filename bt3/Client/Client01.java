@@ -3,17 +3,20 @@ package bt3.Client;
 import bt3.ConfigReader;
 import bt3.Server.FileService;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-public class Client implements Runnable{
+public class Client01 implements Runnable{
     private ObjectInputStream is;
     private final BlockingQueue<Object> queue;
 
 
-    public Client() {
+    public Client01() {
         ConfigReader config = ConfigReader.getInstance();
         this.queue = new ArrayBlockingQueue<>(Integer.parseInt(config.getConfig("num.threads")));
     }
@@ -118,7 +121,7 @@ public class Client implements Runnable{
 
 
     public static void main(String[] args) {
-        new Client().run();
+        new Client01().run();
     }
 }
 

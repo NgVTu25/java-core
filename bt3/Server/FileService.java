@@ -1,5 +1,6 @@
 package bt3.Server;
 
+import bt3.Client.ClientHandler;
 import bt3.CommandRequest;
 import bt3.ConfigReader;
 
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
+import static bt3.Server.Server.clients;
 
 public class FileService {
     private ConfigReader config;
@@ -40,7 +42,7 @@ public class FileService {
         this.is = null;
     }
 
-    public void requestCheck() throws IOException, ClassNotFoundException {
+    public void requestCheck() throws IOException {
         CommandRequest request = new CommandRequest("CHECK", "", 0);
         os.writeObject(request);
         os.flush();
@@ -99,12 +101,19 @@ public class FileService {
                     }
                 }
 
+                int chunkCount = 0;
+
                 while (true) {
                     Object data = queue.take();
                     if (data instanceof FileChuck) {
                         FileChuck file = (FileChuck) data;
                         raf.write(file.getData());
                         System.out.print("\rĐang tải... " + raf.getFilePointer() + " bytes");
+
+                        chunkCount++;
+                        if (chunkCount % 100 == 0) {
+                            os.reset();
+                        }
 
                         if (file.getCompleted()) {
                             System.out.println("\n[Thành công] Tải file hoàn tất!");
@@ -144,10 +153,11 @@ public class FileService {
 
                     try (RandomAccessFile raf = new RandomAccessFile(localFile, "r")) {
                         raf.seek(offset);
-                        byte[] buffer = new byte[1024 * 4];
+                        byte[] buffer = new byte[1024 * 64];
                         int bytesRead;
 
                         System.out.println("Bắt đầu Upload...");
+                        int chunkCount = 0;
                         while ((bytesRead = raf.read(buffer)) != -1) {
                             FileChuck chunk = new FileChuck();
                             chunk.setFileName(filename);
@@ -160,6 +170,10 @@ public class FileService {
 
                             os.writeObject(chunk);
                             os.flush();
+                            chunkCount++;
+                            if (chunkCount % 100 == 0) {
+                                os.reset(); // Xóa cache để giải phóng bộ nhớ
+                            }
                             System.out.print("\rĐã gửi: " + raf.getFilePointer() + " / " + totalSize + " bytes");
                         }
                         System.out.println("\n[Upload Thành Công]");
@@ -187,8 +201,17 @@ public class FileService {
     }
 
 
+    public void clientToClient(int receiverId, String message) {
+        try {
+            os.writeObject("PRIVATE_CHAT:" + receiverId + ":" + message);
+            os.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public List<String> handleCheckCommand() {
-       List<String> list = new ArrayList<String>();
+       List<String> list = new ArrayList<>();
         File folder = new File(config.getConfig("download.path"));
         if (folder.isDirectory()) {
             String[] files = folder.list();

@@ -31,6 +31,7 @@ public class Server {
                     Integer.parseInt(config.getConfig("clients")));
             startServer();
             acceptConnection();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -92,7 +93,7 @@ public class Server {
             try {
                 queue.put(clientSocket);
                 System.out.println("Client accepted: " + clientSocket);
-                ClientHandler clientHandler = new ClientHandler(clientSocket, serverSocket ,queue , queue.size());
+                ClientHandler clientHandler = new ClientHandler(clientSocket ,queue , queue.size());
                 clients.add(clientHandler);
 
                 new Thread(clientHandler).start();

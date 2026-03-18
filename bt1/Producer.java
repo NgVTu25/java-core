@@ -21,10 +21,10 @@ public class Producer implements Runnable {
                 System.out.println("Produced resource - Queue size() = "  + queue.size());
                 if (queue.size() == full) {
                     System.out.println("Queue full");
-                    Thread.sleep(500);
+                    //Thread.sleep(500);
                 }
                 System.out.printf("bt1.Producer Message: %s\n", number);
-                Thread.sleep(100);
+                //Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
