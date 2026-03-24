@@ -1,11 +1,10 @@
 package bt3.Client;
 
-import bt3.Command;
-import bt3.CommandControl;
-import bt3.CommandRequest;
-import bt3.ConfigReader;
+import bt3.*;
 import bt3.Server.FileService;
 import bt3.Server.Server;
+import bt3.model.PrivateChatMessage;
+import bt3.model.TextMessage;
 
 import java.io.*;
 import java.net.Socket;
@@ -16,49 +15,43 @@ public class ClientHandler implements Runnable {
     public final BlockingQueue<Socket> queue;
     private ObjectOutputStream os;
     private ObjectInputStream is;
-    private final int id;
+    private int id;
 
-    public ClientHandler(Socket socket, BlockingQueue<Socket> queue, int id) {
+    public ClientHandler(Socket socket, BlockingQueue<Socket> queue) {
         this.socket = socket;
         this.queue = queue;
-        this.id = id;
         try {
             this.os = new ObjectOutputStream(socket.getOutputStream());
             this.os.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        ConfigReader config = ConfigReader.getInstance();
     }
 
     @Override
     public void run() {
         try {
             is = new ObjectInputStream(socket.getInputStream());
-            FileService fileService = new FileService(socket, os, is);
+            FileService fileService = new FileService(os);
+
             while (true) {
                 try {
                     Object receivedData = is.readObject();
+
                     if (receivedData instanceof CommandRequest request) {
-                        Command command = CommandControl.getCommand(request.getCommandType());
+                        Command command = CommandControl.getCommand(request.commandType());
 
                         if (command != null) {
                             command.execute(request, os, is, fileService);
                         }
-                    } else if (receivedData instanceof String str) {
-                        if (str.startsWith("PRIVATE_CHAT:")) {
-                            String[] parts = str.split(":", 3);
-                            int receiverId = Integer.parseInt(parts[1]);
-                            String chatMsg = parts[2];
 
-                            Server.privateMessage(receiverId, "[Từ Client " + this.id + "]: " + chatMsg);
-                        } else if (str.equalsIgnoreCase("stop")) {
-                            System.out.println("Client " + socket.getRemoteSocketAddress() + " yêu cầu ngắt kết nối.");
-                            break;
-                        } else {
-                            System.out.println("[Client " + getId() + socket.getRemoteSocketAddress() + " nói]: " + str);
-                        }
+                    } else if (receivedData instanceof MessageEnvelope env) {
+                        handleMessageEnvelope(env);
+
+                    } else {
+                        System.out.println("Dữ liệu không hỗ trợ: " + receivedData.getClass().getName());
                     }
+
                 } catch (Exception e) {
                     System.out.println("Lỗi xử lý yêu cầu: " + e.getMessage());
                     break;
@@ -75,6 +68,28 @@ public class ClientHandler implements Runnable {
         }
     }
 
+    private void handleMessageEnvelope(MessageEnvelope env) {
+        String type = env.type();
+
+        switch (type) {
+            case "CHAT":
+                if (env.payload() instanceof TextMessage tm) {
+                    System.out.println("[Client " + tm.sender() + " nói]: " + tm.content());
+                }
+                break;
+
+            case "PRIVATE_CHAT":
+                if (env.payload() instanceof PrivateChatMessage(int senderId, int receiverId, String content)) {
+                    Server.privateMessage(receiverId, "[Từ Client " + senderId + "]: " + content);
+                }
+                break;
+
+            default:
+                System.out.println("Loại message không hỗ trợ: " + type);
+        }
+    }
+
+
     public void sendMessage(String msg) {
         try {
             os.writeObject(msg);
@@ -84,12 +99,24 @@ public class ClientHandler implements Runnable {
         }
     }
 
+
     private void disconnect() {
         System.out.println("Client đã ngắt kết nối: " + socket.getRemoteSocketAddress());
-        try { if (is != null) is.close(); } catch (IOException e) {}
-        try { if (os != null) os.close(); } catch (IOException e) {}
-        try { if (socket != null && !socket.isClosed()) socket.close(); } catch (IOException e) {}
+        try {
+            if (is != null) is.close();
+        } catch (IOException ignored) {
+        }
+        try {
+            if (os != null) os.close();
+        } catch (IOException ignored) {
+        }
+        try {
+            if (!socket.isClosed()) socket.close();
+        } catch (IOException ignored) {
+        }
     }
 
-    public int getId() { return id; }
+    public int getId() {
+        return id;
+    }
 }
