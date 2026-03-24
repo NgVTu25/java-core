@@ -10,14 +10,14 @@ import java.io.*;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 
-public class ClientHandler implements Runnable {
+public class ClientListener implements Runnable {
     private final Socket socket;
     public final BlockingQueue<Socket> queue;
     private ObjectOutputStream os;
     private ObjectInputStream is;
     private int id;
 
-    public ClientHandler(Socket socket, BlockingQueue<Socket> queue) {
+    public ClientListener(Socket socket, BlockingQueue<Socket> queue) {
         this.socket = socket;
         this.queue = queue;
         try {
@@ -79,7 +79,7 @@ public class ClientHandler implements Runnable {
                 break;
 
             case "PRIVATE_CHAT":
-                if (env.payload() instanceof PrivateChatMessage(int senderId, int receiverId, String content)) {
+                if (env.payload() instanceof PrivateChatMessage(int senderId, String content)) {
                     Server.privateMessage(receiverId, "[Từ Client " + senderId + "]: " + content);
                 }
                 break;

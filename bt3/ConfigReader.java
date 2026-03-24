@@ -6,7 +6,7 @@ import java.util.Properties;
 
 public class ConfigReader {
     private static final ConfigReader instance = new ConfigReader();
-    private Properties prop;
+    private final Properties prop;
     private ConfigReader() {
         prop = new Properties();
         try {

@@ -1,17 +1,17 @@
 package bt3;
 
-import bt3.Server.FileChuck;
+import bt3.model.FileChuck;
 import bt3.Server.FileService;
 
 import java.io.*;
 
 public class Upload implements Command {
-    private ConfigReader config = ConfigReader.getInstance();
+    private final ConfigReader config = ConfigReader.getInstance();
 
     @Override
     public void execute(CommandRequest request, ObjectOutputStream os, ObjectInputStream is, FileService fileService) throws IOException {
-        String filename = request.getFilename();
-        long clientFileSize = request.getOffset();
+        String filename = request.filename();
+        long clientFileSize = request.offset();
 
         String savePath = config.getConfig("download.path") + "/" + filename;
         File file = new File(savePath);
@@ -41,8 +41,7 @@ public class Upload implements Command {
             while (true) {
                 receivedData = is.readObject();
 
-                if (receivedData instanceof FileChuck) {
-                    FileChuck chunk = (FileChuck) receivedData;
+                if (receivedData instanceof FileChuck chunk) {
 
                     raf.write(chunk.getData());
 
@@ -51,8 +50,7 @@ public class Upload implements Command {
                         break;
                     }
                 }
-                else if (receivedData instanceof String) {
-                    String msg = (String) receivedData;
+                else if (receivedData instanceof String msg) {
                     if (msg.equalsIgnoreCase("CANCEL")) break;
                 }
             }

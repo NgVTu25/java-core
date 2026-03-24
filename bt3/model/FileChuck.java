@@ -1,4 +1,4 @@
-package bt3.Server;
+package bt3.model;
 
 import java.io.Serializable;
 

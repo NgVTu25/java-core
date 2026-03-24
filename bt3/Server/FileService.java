@@ -1,45 +1,35 @@
 package bt3.Server;
 
-import bt3.Client.ClientHandler;
 import bt3.CommandRequest;
 import bt3.ConfigReader;
+import bt3.MessageEnvelope;
+import bt3.model.FileChuck;
+import bt3.model.PrivateChatMessage;
+import bt3.model.TextMessage;
 
 import java.io.*;
-import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
-import static bt3.Server.Server.clients;
-
 public class FileService {
-    private ConfigReader config;
-    private Socket client;
-    private BufferedReader br;
-    private ObjectOutputStream os;
-    private ObjectInputStream is;
+    private final ConfigReader config;
+    private final BufferedReader br;
+    private final ObjectOutputStream os;
     private BlockingQueue<Object> queue;
 
-    public FileService(Socket client, BlockingQueue<Object> queue, ObjectOutputStream os, ObjectInputStream is) {
+    public FileService(BlockingQueue<Object> queue, ObjectOutputStream os) {
         this.config = ConfigReader.getInstance();
-        this.client = client;
         this.os = os;
         this.br = new BufferedReader(new InputStreamReader(System.in));
         this.queue = queue;
     }
 
-    public FileService(Socket client, ObjectOutputStream os, ObjectInputStream is) {
+    public FileService(ObjectOutputStream os) {
         this.config = ConfigReader.getInstance();
-        this.client = client;
         this.os = os;
         this.br = new BufferedReader(new InputStreamReader(System.in));
-    }
-
-    public FileService() {
-        this.config = ConfigReader.getInstance();
-        this.client = null;
-        this.os = null;
-        this.is = null;
     }
 
     public void requestCheck() throws IOException {
@@ -48,7 +38,7 @@ public class FileService {
         os.flush();
 
         try {
-            Object response =queue.take();
+            Object response = queue.take();
             if (response instanceof List<?>) {
                 List<String> files = (List<String>) response;
                 System.out.println("\n--- Danh sách file trên Server ---");
@@ -75,8 +65,7 @@ public class FileService {
             os.flush();
 
             Object response = queue.take();
-            if (response instanceof FileChuck) {
-                FileChuck chuck = (FileChuck) response;
+            if (response instanceof FileChuck chuck) {
                 if (chuck.getStatus() != null && chuck.getStatus().startsWith("REJECT")) {
                     System.out.println("Server: " + chuck.getStatus());
                     return;
@@ -90,8 +79,7 @@ public class FileService {
             try (RandomAccessFile raf = new RandomAccessFile(localFile, "rw")) {
                 raf.seek(offset);
 
-                if (response instanceof FileChuck) {
-                    FileChuck chunk = (FileChuck) response;
+                if (response instanceof FileChuck chunk) {
                     if (chunk.getData() != null) {
                         raf.write(chunk.getData());
                         if (chunk.getCompleted()) {
@@ -105,8 +93,7 @@ public class FileService {
 
                 while (true) {
                     Object data = queue.take();
-                    if (data instanceof FileChuck) {
-                        FileChuck file = (FileChuck) data;
+                    if (data instanceof FileChuck file) {
                         raf.write(file.getData());
                         System.out.print("\rĐang tải... " + raf.getFilePointer() + " bytes");
 
@@ -143,8 +130,7 @@ public class FileService {
             os.flush();
 
             Object response = queue.take();
-            if (response instanceof String) {
-                String serverMsg = (String) response;
+            if (response instanceof String serverMsg) {
 
                 if (serverMsg.startsWith("REJECT")) {
                     System.out.println("Server từ chối: " + serverMsg);
@@ -189,10 +175,19 @@ public class FileService {
         System.out.println("--- CHẾ ĐỘ NHẮN TIN (Gõ 'exit' để quay lại Menu) ---");
         while (true) {
             System.out.print("Bạn: ");
+
             try {
+
                 String msg = br.readLine().trim();
                 if (msg.equalsIgnoreCase("exit")) break;
-                os.writeObject(msg);
+
+                String senderId = br.readLine().trim();
+                String receiverId = br.readLine().trim();
+
+                TextMessage textMessage = new TextMessage(msg, Integer.parseInt(senderId), Integer.parseInt(receiverId));
+                MessageEnvelope envelope = new MessageEnvelope("CHAT", textMessage);
+
+                os.writeObject(envelope);
                 os.flush();
             } catch (IOException e) {
                 System.out.println("Lỗi gửi tin nhắn.");
@@ -202,23 +197,30 @@ public class FileService {
 
 
     public void clientToClient(int receiverId, String message) {
+
         try {
-            os.writeObject("PRIVATE_CHAT:" + receiverId + ":" + message);
+
+            PrivateChatMessage privateChatMessage =
+                    new PrivateChatMessage(receiverId, message);
+
+            MessageEnvelope envelope =
+                    new MessageEnvelope("PRIVATE_CHAT", privateChatMessage);
+
+            os.writeObject(envelope);
             os.flush();
-        } catch (Exception e) {
-            e.printStackTrace();
+
+        } catch (IOException e) {
+            System.err.println("Lỗi gửi private chat: " + e.getMessage());
         }
     }
 
     public List<String> handleCheckCommand() {
-       List<String> list = new ArrayList<>();
+        List<String> list = new ArrayList<>();
         File folder = new File(config.getConfig("download.path"));
         if (folder.isDirectory()) {
             String[] files = folder.list();
-            if (files != null && files.length > 0) {
-                for (String name : files) {
-                    list.add(name);
-                }
+            if (files != null) {
+                list.addAll(Arrays.asList(files));
             }
         }
         return list;

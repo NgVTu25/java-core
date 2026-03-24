@@ -1,20 +1,11 @@
 package bt3;
 
-import bt3.Server.FileService;
-import bt3.model.Messages;
+import bt3.model.MessagePayload;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.Serial;
+import java.io.Serializable;
 
-public class Message implements Command {
-    private Messages message;
-
-    @Override
-    public void execute(CommandRequest request, ObjectOutputStream os, ObjectInputStream is, FileService fileService) throws IOException {
-
-
-
-    }
-
+public record MessageEnvelope(String type, MessagePayload payload) implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
 }

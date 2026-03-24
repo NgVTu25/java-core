@@ -8,9 +8,14 @@ import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-public class Client implements Runnable{
+public class Client implements Runnable {
     private ObjectInputStream is;
     private final BlockingQueue<Object> queue;
+
+    private Socket socket;
+    private BufferedReader br;
+
+    private ObjectOutputStream os;
 
 
     public Client() {
@@ -23,12 +28,13 @@ public class Client implements Runnable{
         ConfigReader configReader = ConfigReader.getInstance();
         String ip = "localhost";
         try {
-            Socket socket = new Socket(ip, Integer.parseInt(configReader.getConfig("port")));
+            socket = new Socket(ip, Integer.parseInt(configReader.getConfig("port")));
             System.out.println("Kết nối thành công tới Server: " + ip);
 
-            ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
+            os = new ObjectOutputStream(socket.getOutputStream());
             is = new ObjectInputStream(socket.getInputStream());
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+            br = new BufferedReader(new InputStreamReader(System.in));
             os.flush();
 
             Thread receiveThread = new Thread(() -> {
@@ -45,6 +51,7 @@ public class Client implements Runnable{
                         } else {
                             queue.put(obj);
                         }
+
                     }
                 } catch (Exception e) {
                     System.out.println("\n[Hệ thống] Đã ngắt luồn nhận tin nhắn.");
@@ -61,51 +68,67 @@ public class Client implements Runnable{
                 System.out.println("5. Gửi tin nhắn cho client (CHAT)");
                 System.out.println("6. Thoát (STOP)");
                 System.out.print("Vui lòng chọn chức năng (1-6): ");
-                FileService fileService = new FileService(socket, queue, os, is);
+                FileService fileService = new FileService(queue, os);
 
                 String file;
                 String choice = br.readLine().trim();
                 switch (choice) {
+
                     case "1":
                         fileService.requestCheck();
                         break;
+
                     case "2":
                         System.out.print("Nhập tên file cần tải về: ");
                         file = br.readLine().trim();
+
                         if (file.isEmpty()) {
                             System.out.println("Tên file không được để trống!");
                             break;
                         }
+
                         fileService.requestDownload(file);
                         break;
+
                     case "3":
                         System.out.print("Nhập đường dẫn tuyệt đối của file: ");
                         file = br.readLine().trim();
+
                         if (file.isEmpty()) {
                             System.out.println("Đường dẫn không được để trống!");
                             break;
                         }
+
                         fileService.requestUpload(file);
                         break;
+
                     case "4":
                         fileService.chatMode();
                         break;
+
                     case "5":
                         System.out.println("Enter Client ID:");
-                        String id = br.readLine();
+
+                        int receiverId = Integer.parseInt(br.readLine());
+
                         while (true) {
                             String message = br.readLine();
+
                             if (message.equalsIgnoreCase("stop")) {
                                 break;
                             }
-                            fileService.clientToClient(Integer.parseInt(id), message);
+
+
+                            fileService.clientToClient(receiverId, message);
                         }
                         break;
+
                     case "6":
                         os.writeObject("stop");
                         os.flush();
                         System.exit(0);
                         break;
+
                     default:
                         System.out.println("Lựa chọn không hợp lệ!");
                 }
@@ -115,6 +138,24 @@ public class Client implements Runnable{
         }
     }
 
+    private void closeConnection() {
+        try {
+            if (br != null) br.close();
+        } catch (IOException ignored) {
+        }
+        try {
+            if (is != null) is.close();
+        } catch (IOException ignored) {
+        }
+        try {
+            if (os != null) os.close();
+        } catch (IOException ignored) {
+        }
+        try {
+            if (socket != null && !socket.isClosed()) socket.close();
+        } catch (IOException ignored) {
+        }
+    }
 
 
     public static void main(String[] args) {

@@ -1,4 +1,7 @@
 package bt3.model;
 
-public interface MessagePayload {
+import java.io.Serializable;
+
+public interface MessagePayload extends Serializable {
+
 }

@@ -1,19 +1,19 @@
 package bt3;
 
-import bt3.Server.FileChuck;
+import bt3.model.FileChuck;
 import bt3.Server.FileService;
 
 import java.io.*;
 
 
 public class Download implements Command {
-    private ConfigReader config = ConfigReader.getInstance();
+    private final ConfigReader config = ConfigReader.getInstance();
 
 
     @Override
     public void execute(CommandRequest commandRequest, ObjectOutputStream os, ObjectInputStream is, FileService fileService) throws IOException {
-        String filename = commandRequest.getFilename();
-        long offset = commandRequest.getOffset();
+        String filename = commandRequest.filename();
+        long offset = commandRequest.offset();
 
         String filePath = config.getConfig("download.path") + "/" + filename;
         File file = new File(filePath);
@@ -30,7 +30,7 @@ public class Download implements Command {
         try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
             raf.seek(offset);
 
-            byte[] buffer = new byte[1024 * 64]; // Gửi từng cục 8KB
+            byte[] buffer = new byte[1024 * 64];
             int bytes;
 
             while ((bytes = raf.read(buffer)) != -1) {

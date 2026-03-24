@@ -19,9 +19,9 @@ public class Main {
         InputFileReader fileReader = new InputFileReader();
         int[] arr = fileReader.readFile();
 
-            Thread[] threads = new Thread[number_of_Threads];
-            int arraySize = (arr.length + number_of_Threads - 1) / number_of_Threads;
-            long startTime = System.currentTimeMillis();
+        Thread[] threads = new Thread[number_of_Threads];
+        int arraySize = (arr.length + number_of_Threads - 1) / number_of_Threads;
+        long startTime = System.currentTimeMillis();
 
         for (int i = 0; i < number_of_Threads; i++) {
             int start = i * arraySize;
@@ -52,7 +52,7 @@ public class Main {
         }
 
         long endTime = System.currentTimeMillis();
-            long Time = endTime - startTime;
+        long Time = endTime - startTime;
 
         System.out.println("Time taken: " + Time);
 
