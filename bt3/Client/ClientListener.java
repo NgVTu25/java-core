@@ -79,8 +79,8 @@ public class ClientListener implements Runnable {
                 break;
 
             case "PRIVATE_CHAT":
-                if (env.payload() instanceof PrivateChatMessage(int senderId, String content)) {
-                    Server.privateMessage(receiverId, "[Từ Client " + senderId + "]: " + content);
+                if (env.payload() instanceof PrivateChatMessage(int receiverId, String content)) {
+                    Server.privateMessage(receiverId, "[Từ Client " + id + "]: " + content);
                 }
                 break;
 

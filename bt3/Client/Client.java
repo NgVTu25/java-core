@@ -126,6 +126,7 @@ public class Client implements Runnable {
                     case "6":
                         os.writeObject("stop");
                         os.flush();
+                        closeConnection();
                         System.exit(0);
                         break;
 

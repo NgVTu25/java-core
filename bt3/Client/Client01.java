@@ -126,6 +126,7 @@ public class Client01 implements Runnable {
                     case "6":
                         os.writeObject("stop");
                         os.flush();
+                        closeConnection();
                         System.exit(0);
                         break;
 
@@ -133,6 +134,7 @@ public class Client01 implements Runnable {
                         System.out.println("Lựa chọn không hợp lệ!");
                 }
             }
+            
         } catch (Exception e) {
             System.out.println("Lỗi kết nối: " + e.getMessage());
         }
