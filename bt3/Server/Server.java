@@ -103,6 +103,7 @@ public class Server {
                 int clientId = ID_GENERATOR.getAndIncrement();
 
                 System.out.println("Client accepted: " + clientSocket + " | id = " + clientId);
+                broadcast("Client accepted: " + clientSocket + " | id = " + clientId);
 
                 ClientHandler clientHandler = new ClientHandler(clientSocket, clientId);
                 clients.add(clientHandler);
