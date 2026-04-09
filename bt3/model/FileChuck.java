@@ -3,11 +3,11 @@ package bt3.model;
 import java.io.Serializable;
 
 public class FileChuck implements Serializable {
+    public boolean completed;
     private String fileName;
     private Long offset;
     private byte[] data;
     private String status;
-    public boolean completed;
 
     public String getFileName() {
         return fileName;
@@ -29,17 +29,16 @@ public class FileChuck implements Serializable {
         return data;
     }
 
+    public void setData(byte[] data) {
+        this.data = data;
+    }
+
     public boolean getCompleted() {
         return completed;
     }
 
-
     public void setCompleted(boolean completed) {
         this.completed = completed;
-    }
-
-    public void setData(byte[] data) {
-        this.data = data;
     }
 
     public String getStatus() {

@@ -47,6 +47,15 @@ public class ClientTwo implements Runnable {
                             } else {
                                 System.out.println("\n[Tin nhắn từ Server]: " + msg);
                             }
+
+                            if (msg.startsWith("SERVER_FULL")) {
+                                System.out.println(msg);
+                                System.out.println("Đang đóng ứng dụng...");
+
+                                socket.close();
+                                System.exit(0);
+                            }
+
                         } else {
                             queue.put(obj);
                         }

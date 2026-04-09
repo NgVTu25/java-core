@@ -22,7 +22,7 @@ public class ClientOne implements Runnable {
     }
 
     public static void main(String[] args) {
-        new Client().run();
+        new ClientOne().run();
     }
 
     @Override
@@ -47,6 +47,15 @@ public class ClientOne implements Runnable {
                             } else {
                                 System.out.println("\n[Tin nhắn từ Server]: " + msg);
                             }
+
+                            if (msg.startsWith("SERVER_FULL")) {
+                                System.out.println(msg);
+                                System.out.println("Đang đóng ứng dụng...");
+
+                                socket.close();
+                                System.exit(0);
+                            }
+
                         } else {
                             queue.put(obj);
                         }

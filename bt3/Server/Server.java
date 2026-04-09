@@ -62,6 +62,7 @@ public class Server {
 
     public static void removeClient(ClientHandler clientHandler) {
         clients.remove(clientHandler);
+        clientIds.remove(clientHandler.getClientId());
         queue.poll();
 
         broadcast("[Hệ thống] Client id = " + clientHandler.getClientId() + " đã ngắt kết nối.");
@@ -104,6 +105,7 @@ public class Server {
                     } else {
                         broadcast("[Server]: " + message);
                     }
+                    System.out.println(queue.remainingCapacity());
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -117,7 +119,6 @@ public class Server {
 
         while (true) {
             Socket clientSocket = serverSocket.accept();
-
             int clientId;
 
             do {
@@ -126,21 +127,23 @@ public class Server {
 
             ClientHandler clientHandler = new ClientHandler(clientSocket, clientId);
 
-
             if (queue.remainingCapacity() == 0) {
-                removeClient(clientHandler);
-                System.out.println("Đã đạt giới hạn client kết nối. Vui lòng chờ...");
+                clientHandler.sendMessage("SERVER_FULL: Rất tiếc, server đã đầy. Vui lòng thử lại sau!");
+
+                try {
+                    clientSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Đã từ chối kết nối mới (Server full).");
             } else {
                 queue.add(clientSocket);
                 clients.add(clientHandler);
                 clientIds.add(clientId);
+
+                clientHandler.sendMessage("[ID]: " + clientId);
+                new Thread(clientHandler).start();
             }
-
-
-            privateMessage(clientId, "[ID]: " + clientId);
-
-            new Thread(clientHandler).start();
-
         }
     }
 }
