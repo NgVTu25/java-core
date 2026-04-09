@@ -8,7 +8,7 @@ import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-public class Client implements Runnable {
+public class ClientOne implements Runnable {
     private final BlockingQueue<Object> queue;
     private final ConfigReader config = ConfigReader.getInstance();
     private ObjectInputStream is;
@@ -17,7 +17,7 @@ public class Client implements Runnable {
     private ObjectOutputStream os;
 
 
-    public Client() {
+    public ClientOne() {
         this.queue = new ArrayBlockingQueue<>(Integer.parseInt(config.getConfig("num.threads")));
     }
 
@@ -49,10 +49,6 @@ public class Client implements Runnable {
                             }
                         } else {
                             queue.put(obj);
-                        }
-                        if (!socket.isConnected()) {
-                            System.out.println("\n[Hệ thống] Đã ngắt kết nối với Server.");
-                            break;
                         }
                     }
                 } catch (Exception e) {

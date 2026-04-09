@@ -8,17 +8,19 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server {
 
+    protected static final Set<Integer> clientIds = ConcurrentHashMap.newKeySet();
+    protected static List<ClientHandler> clients = new CopyOnWriteArrayList<>();
+    private static BlockingQueue<Socket> queue;
     private ServerSocket serverSocket;
-    private final BlockingQueue<Socket> queue;
-    public static List<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private static final AtomicInteger ID_GENERATOR = new AtomicInteger(1);
 
     public Server() {
         ConfigReader config = ConfigReader.getInstance();
@@ -36,6 +38,38 @@ public class Server {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static List<Integer> getClientIds() {
+        return clientIds.stream().toList();
+    }
+
+    public static void broadcast(String message) {
+        for (ClientHandler client : clients) {
+            client.sendMessage(message);
+        }
+    }
+
+    public static void privateMessage(int id, String message) {
+        for (ClientHandler client : clients) {
+            if (client.getClientId() == id) {
+                client.sendMessage(message);
+                return;
+            }
+        }
+        System.out.println("Không tìm thấy client có id = " + id);
+    }
+
+    public static void removeClient(ClientHandler clientHandler) {
+        clients.remove(clientHandler);
+        queue.poll();
+
+        broadcast("[Hệ thống] Client id = " + clientHandler.getClientId() + " đã ngắt kết nối.");
+        System.out.println("Đã xóa client id = " + clientHandler.getClientId());
+    }
+
+    public static void main(String[] args) {
+        new Server();
     }
 
     private void startServer() {
@@ -77,52 +111,36 @@ public class Server {
         }).start();
     }
 
-    public static void broadcast(String message) {
-        for (ClientHandler client : clients) {
-            client.sendMessage(message);
-        }
-    }
-
-    public static void privateMessage(int id, String message) {
-        for (ClientHandler client : clients) {
-            if (client.getClientId() == id) {
-                client.sendMessage(message);
-                return;
-            }
-        }
-        System.out.println("Không tìm thấy client có id = " + id);
-    }
-
     public void acceptConnection() throws IOException {
         System.out.println("Server is listening...");
+        Random random = new Random();
 
         while (true) {
             Socket clientSocket = serverSocket.accept();
-            try {
-                queue.put(clientSocket);
-                int clientId = ID_GENERATOR.getAndIncrement();
 
-                System.out.println("Client accepted: " + clientSocket + " | id = " + clientId);
-                broadcast("Client accepted: " + clientSocket + " | id = " + clientId);
+            int clientId;
 
-                ClientHandler clientHandler = new ClientHandler(clientSocket, clientId);
+            do {
+                clientId = random.nextInt(15, 999999);
+            } while (clientIds.contains(clientId));
+
+            ClientHandler clientHandler = new ClientHandler(clientSocket, clientId);
+
+
+            if (queue.remainingCapacity() == 0) {
+                removeClient(clientHandler);
+                System.out.println("Đã đạt giới hạn client kết nối. Vui lòng chờ...");
+            } else {
+                queue.add(clientSocket);
                 clients.add(clientHandler);
-
-                new Thread(clientHandler).start();
-
-            } catch (InterruptedException e) {
-                System.err.println("Failed to add client to queue");
+                clientIds.add(clientId);
             }
+
+
+            privateMessage(clientId, "[ID]: " + clientId);
+
+            new Thread(clientHandler).start();
+
         }
-    }
-    
-
-    public static void removeClient(ClientHandler clientHandler) {
-        clients.remove(clientHandler);
-        System.out.println("Đã xóa client id = " + clientHandler.getClientId());
-    }
-
-    public static void main(String[] args) {
-        new Server();
     }
 }

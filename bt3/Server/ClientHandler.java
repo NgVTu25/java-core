@@ -9,14 +9,13 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 public class ClientHandler implements Runnable {
     private final Socket socket;
-    private BlockingQueue<Object> queue;
-
-
     private final int clientId;
+    private BlockingQueue<Object> queue;
     private ObjectOutputStream os;
     private ObjectInputStream is;
 
@@ -30,7 +29,6 @@ public class ClientHandler implements Runnable {
             e.printStackTrace();
         }
 
-        ConfigReader config = ConfigReader.getInstance();
     }
 
     @Override
@@ -85,7 +83,11 @@ public class ClientHandler implements Runnable {
                 Server.privateMessage(message.receiverId(), "[Client " + clientId + "]: " + message.content());
             }
 
-            case "ASSIGN_ID" -> System.out.println("\n[Hệ thống] ID của bạn là: " + clientId);
+            case "GET_ID" -> {
+                List<Integer> clientIds = Server.getClientIds();
+                System.out.println("\n[Client " + clientId + "] Yêu cầu danh sách client IDs: " + clientIds);
+                Server.privateMessage(clientId, "Danh sách client IDs: " + clientIds);
+            }
             default -> System.out.println("\n[Hệ thống] Nhận loại tin nhắn lạ: " + env.type());
         }
     }
@@ -132,4 +134,5 @@ public class ClientHandler implements Runnable {
     public int getClientId() {
         return clientId;
     }
+
 }

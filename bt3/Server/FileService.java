@@ -202,6 +202,16 @@ public class FileService {
         }
     }
 
+    public void requestClientIds() {
+        try {
+            MessageEnvelope envelope = new MessageEnvelope("GET_ID", new PrivateChatMessage(0, ""));
+            os.writeObject(envelope);
+            os.flush();
+        } catch (IOException e) {
+            System.err.println("Lỗi yêu cầu danh sách client IDs: " + e.getMessage());
+        }
+    }
+
     public List<String> handleCheckCommand() {
         List<String> list = new ArrayList<>();
         File folder = new File(config.getConfig("download.path"));
