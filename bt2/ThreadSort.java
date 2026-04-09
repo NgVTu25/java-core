@@ -2,9 +2,9 @@ package bt2;
 
 public class ThreadSort implements Runnable {
 
-    private int[] array;
-        private int startIndex;
-        private int endIndex;
+    private final int[] array;
+        private final int startIndex;
+        private final int endIndex;
 
         public ThreadSort(int[] array, int startIndex, int endIndex) {
             this.array = array;
@@ -30,8 +30,7 @@ public class ThreadSort implements Runnable {
         int[] leftArray = new int[n1];
         int[] rightArray = new int[n2];
 
-        for (int i = 0; i < n1; ++i)
-            leftArray[i] = arr[left + i];
+        System.arraycopy(arr, left + 0, leftArray, 0, n1);
         for (int j = 0; j < n2; ++j)
             rightArray[j] = arr[middle + 1 + j];
 

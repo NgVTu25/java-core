@@ -14,21 +14,19 @@ public class Client implements Runnable {
 
     private Socket socket;
     private BufferedReader br;
-
     private ObjectOutputStream os;
+    private final ConfigReader config = ConfigReader.getInstance();
 
 
     public Client() {
-        ConfigReader config = ConfigReader.getInstance();
         this.queue = new ArrayBlockingQueue<>(Integer.parseInt(config.getConfig("num.threads")));
     }
 
     @Override
     public void run() {
-        ConfigReader configReader = ConfigReader.getInstance();
         String ip = "localhost";
         try {
-            socket = new Socket(ip, Integer.parseInt(configReader.getConfig("port")));
+            socket = new Socket(ip, Integer.parseInt(config.getConfig("port")));
             System.out.println("Kết nối thành công tới Server: " + ip);
 
             os = new ObjectOutputStream(socket.getOutputStream());
@@ -41,7 +39,6 @@ public class Client implements Runnable {
                 try {
                     while (true) {
                         Object obj = is.readObject();
-
                         if (obj instanceof String msg) {
                             if (msg.startsWith("ACCEPT") || msg.startsWith("REJECT") || msg.equalsIgnoreCase("stop")) {
                                 queue.put(msg);
@@ -51,10 +48,10 @@ public class Client implements Runnable {
                         } else {
                             queue.put(obj);
                         }
-
                     }
                 } catch (Exception e) {
-                    System.out.println("\n[Hệ thống] Đã ngắt luồn nhận tin nhắn.");
+                    System.out.println("\n[Hệ thống] Đã ngắt luồng nhận tin nhắn.");
+                    e.printStackTrace();
                 }
             });
             receiveThread.start();
@@ -86,19 +83,16 @@ public class Client implements Runnable {
                             System.out.println("Tên file không được để trống!");
                             break;
                         }
-
                         fileService.requestDownload(file);
                         break;
 
                     case "3":
                         System.out.print("Nhập đường dẫn tuyệt đối của file: ");
                         file = br.readLine().trim();
-
                         if (file.isEmpty()) {
                             System.out.println("Đường dẫn không được để trống!");
                             break;
                         }
-
                         fileService.requestUpload(file);
                         break;
 
@@ -108,16 +102,13 @@ public class Client implements Runnable {
 
                     case "5":
                         System.out.println("Enter Client ID:");
-
                         int receiverId = Integer.parseInt(br.readLine());
-
                         while (true) {
                             String message = br.readLine();
 
                             if (message.equalsIgnoreCase("stop")) {
                                 break;
                             }
-
 
                             fileService.clientToClient(receiverId, message);
                         }

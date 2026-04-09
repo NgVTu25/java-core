@@ -6,7 +6,7 @@ import java.util.concurrent.BlockingQueue;
 public class Producer implements Runnable {
 
     private final BlockingQueue<String> queue;
-    private int full;
+    private final int full;
     public Producer(BlockingQueue<String> queue,int full) {
         this.queue = queue;
         this.full = full;

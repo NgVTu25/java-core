@@ -17,19 +17,13 @@ public class FileService {
     private final ConfigReader config;
     private final BufferedReader br;
     private final ObjectOutputStream os;
-    private BlockingQueue<Object> queue;
+    private final BlockingQueue<Object> queue;
 
     public FileService(BlockingQueue<Object> queue, ObjectOutputStream os) {
         this.config = ConfigReader.getInstance();
         this.os = os;
         this.br = new BufferedReader(new InputStreamReader(System.in));
         this.queue = queue;
-    }
-
-    public FileService(ObjectOutputStream os) {
-        this.config = ConfigReader.getInstance();
-        this.os = os;
-        this.br = new BufferedReader(new InputStreamReader(System.in));
     }
 
     public void requestCheck() throws IOException {
@@ -158,7 +152,7 @@ public class FileService {
                             os.flush();
                             chunkCount++;
                             if (chunkCount % 100 == 0) {
-                                os.reset(); // Xóa cache để giải phóng bộ nhớ
+                                os.reset();
                             }
                             System.out.print("\rĐã gửi: " + raf.getFilePointer() + " / " + totalSize + " bytes");
                         }
@@ -175,16 +169,10 @@ public class FileService {
         System.out.println("--- CHẾ ĐỘ NHẮN TIN (Gõ 'exit' để quay lại Menu) ---");
         while (true) {
             System.out.print("Bạn: ");
-
             try {
-
                 String msg = br.readLine().trim();
                 if (msg.equalsIgnoreCase("exit")) break;
-
-                String senderId = br.readLine().trim();
-                String receiverId = br.readLine().trim();
-
-                TextMessage textMessage = new TextMessage(msg, Integer.parseInt(senderId), Integer.parseInt(receiverId));
+                TextMessage textMessage = new TextMessage(msg);
                 MessageEnvelope envelope = new MessageEnvelope("CHAT", textMessage);
 
                 os.writeObject(envelope);

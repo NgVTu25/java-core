@@ -17,7 +17,7 @@ public class Main {
         int number_of_Threads = Integer.parseInt(properties.getProperty("num.threads"));
 
         InputFileReader fileReader = new InputFileReader();
-        int[] arr = fileReader.readFile();
+        int[] arr = InputFileReader.readFile();
 
         Thread[] threads = new Thread[number_of_Threads];
         int arraySize = (arr.length + number_of_Threads - 1) / number_of_Threads;
@@ -83,8 +83,7 @@ public class Main {
         while (j <= end)
             temp[k++] = arr[j++];
 
-        for (int x = 0; x < temp.length; x++)
-            arr[start + x] = temp[x];
+        System.arraycopy(temp, 0, arr, start + 0, temp.length);
     }
 
 }
