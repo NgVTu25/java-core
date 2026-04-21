@@ -30,7 +30,7 @@ public class FileService {
     }
 
     public void requestCheck() throws IOException {
-        CommandRequest request = new CommandRequest("CHECK", "", 0);
+        CommandRequest request = new CommandRequest(LIST_FILE, "", 0);
         os.writeObject(request);
         os.flush();
 
@@ -57,7 +57,7 @@ public class FileService {
             File localFile = new File("client_downloads/" + filename);
             long offset = localFile.exists() ? localFile.length() : 0;
 
-            CommandRequest request = new CommandRequest("DOWNLOAD", filename, offset);
+            CommandRequest request = new CommandRequest(FILE_DOWNLOAD, filename, offset);
             os.writeObject(request);
             os.flush();
 
@@ -122,7 +122,7 @@ public class FileService {
             String filename = localFile.getName();
             long totalSize = localFile.length();
 
-            CommandRequest request = new CommandRequest("UPLOAD", filename, totalSize);
+            CommandRequest request = new CommandRequest(FILE_UPLOAD, filename, totalSize);
             os.writeObject(request);
             os.flush();
 

@@ -123,9 +123,8 @@ public class ClientHandler implements Runnable {
 
     private void handleCommandRequest(CommandRequest request, FileService fileService) {
         try {
-            Command command = CommandControl.getCommand(
-                            request.commandType()
-                    );
+            Command command = CommandControl.getCommand(String.valueOf(request.commandType()));
+
             if (command != null) {
                 command.execute(request, os, is, fileService);
             } else {
