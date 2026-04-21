@@ -1,15 +1,20 @@
 package bt3.Client;
 
 import bt3.ConfigReader;
+import bt3.MessageEnvelope;
 import bt3.Server.FileService;
+import bt3.common.EventType;
 
 import java.io.*;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import static bt3.common.EventType.*;
+
 public class ClientTwo implements Runnable {
-    private final BlockingQueue<Object> queue;
+
+    private final BlockingQueue<Socket> queue;
     private final ConfigReader config = ConfigReader.getInstance();
     private ObjectInputStream is;
     private Socket socket;
@@ -32,80 +37,112 @@ public class ClientTwo implements Runnable {
             socket = new Socket(ip, Integer.parseInt(config.getConfig("port")));
 
             os = new ObjectOutputStream(socket.getOutputStream());
+
             is = new ObjectInputStream(socket.getInputStream());
 
             br = new BufferedReader(new InputStreamReader(System.in));
             os.flush();
 
-            Thread receiveThread = new Thread(() -> {
-                try {
-                    while (true) {
-                        Object obj = is.readObject();
-                        if (obj instanceof String msg) {
-                            if (msg.startsWith("ACCEPT") || msg.startsWith("REJECT") || msg.equalsIgnoreCase("stop")) {
-                                queue.put(msg);
-                            } else {
-                                System.out.println("\n[Tin nhắn từ Server]: " + msg);
+            Thread receiveThread =
+                    new Thread(() -> {
+                        try {
+                            while (true) {
+                                Object obj = is.readObject();
+                                if(obj instanceof MessageEnvelope(EventType type, Object payload)){
+                                    switch(type){
+
+                                        case CHAT -> System.out.println("\n[Tin nhắn]: " + payload);
+
+                                        case PRIVATE_CHAT -> System.out.println("\n[Private]: " + payload);
+
+                                        case CLIENT_LIST -> System.out.println("\n[Danh sách ID]: " + payload);
+
+                                        case ACCEPT -> System.out.println("\n[ACCEPT]: " + payload);
+
+                                        case REJECT -> System.out.println("\n[REJECT]: " + payload);
+
+                                        case SERVER_FULL -> {
+                                            System.out.println("\nServer đã đầy.");
+                                            closeConnection();
+                                            System.exit(0);
+                                        }
+
+                                        case STOP -> {System.out.println("\nServer đóng kết nối.");
+                                            closeConnection();
+                                            System.exit(0);
+                                        }
+
+                                        default -> System.out.println("\nUnknown event: " + type);
+                                    }
+                                } else{
+                                    queue.put((Socket) obj);
+                                }
                             }
-
-                            if (msg.startsWith("SERVER_FULL")) {
-                                System.out.println(msg);
-                                System.out.println("Đang đóng ứng dụng...");
-
-                                socket.close();
-                                System.exit(0);
-                            }
-
-                        } else {
-                            queue.put(obj);
+                        } catch(Exception e){
+                            System.out.println("\n[Hệ thống] Đã ngắt luồng nhận.");
                         }
-                    }
-                } catch (Exception e) {
-                    System.out.println("\n[Hệ thống] Đã ngắt luồng nhận tin nhắn.");
-                    e.printStackTrace();
-                }
-            });
+                    });
+
             receiveThread.start();
 
-            while (true) {
+
+
+            while(true){
+
                 System.out.println("\n=== HỆ THỐNG QUẢN LÝ FILE & CHAT ===");
-                System.out.println("1. Xem danh sách file trên Server (CHECK)");
-                System.out.println("2. Tải file từ Server về máy (DOWNLOAD)");
-                System.out.println("3. Đẩy file từ máy lên Server (UPLOAD)");
-                System.out.println("4. Gửi tin nhắn lên Server (CHAT)");
-                System.out.println("5. Gửi tin nhắn cho client (CHAT)");
-                System.out.println("6. Lấy danh sách ID client đang kết nối (LIST)");
-                System.out.println("7. Thoát (STOP)");
-                System.out.print("Vui lòng chọn chức năng (1-7): ");
+
+                System.out.println("1. CHECK");
+
+                System.out.println("2. DOWNLOAD");
+
+                System.out.println("3. UPLOAD");
+
+                System.out.println("4. CHAT");
+
+                System.out.println("5. PRIVATE CHAT");
+
+                System.out.println("6. LIST CLIENT");
+
+                System.out.println("7. STOP");
+
+                System.out.print("Chọn (1-7): ");
+
 
                 FileService fileService = new FileService(queue, os);
 
+
                 String file;
+
                 String choice = br.readLine().trim();
-                switch (choice) {
+
+                switch(choice){
 
                     case "1":
                         fileService.requestCheck();
                         break;
 
                     case "2":
-                        System.out.print("Nhập tên file cần tải về: ");
+                        System.out.print("Nhập tên file: ");
                         file = br.readLine().trim();
 
-                        if (file.isEmpty()) {
-                            System.out.println("Tên file không được để trống!");
+                        if(file.isEmpty()){
+                            System.out.println("Tên file trống.");
                             break;
                         }
+
                         fileService.requestDownload(file);
                         break;
 
                     case "3":
-                        System.out.print("Nhập đường dẫn tuyệt đối của file: ");
+                        System.out.print("Nhập path file: ");
+
                         file = br.readLine().trim();
-                        if (file.isEmpty()) {
-                            System.out.println("Đường dẫn không được để trống!");
+
+                        if(file.isEmpty()){
+                            System.out.println("Path trống.");
                             break;
                         }
+
                         fileService.requestUpload(file);
                         break;
 
@@ -115,11 +152,12 @@ public class ClientTwo implements Runnable {
 
                     case "5":
                         System.out.println("Enter Client ID:");
-                        int receiverId = Integer.parseInt(br.readLine());
-                        while (true) {
-                            String message = br.readLine();
 
-                            if (message.equalsIgnoreCase("stop")) {
+                        int receiverId = Integer.parseInt(br.readLine());
+
+                        while(true){
+                            String message = br.readLine();
+                            if(message.equalsIgnoreCase("stop")){
                                 break;
                             }
 
@@ -132,39 +170,46 @@ public class ClientTwo implements Runnable {
                         break;
 
                     case "7":
-                        os.writeObject("stop");
+                        os.writeObject(new MessageEnvelope(STOP, null));
                         os.flush();
                         closeConnection();
                         System.exit(0);
+
                         break;
 
-                    default:
-                        System.out.println("Lựa chọn không hợp lệ!");
+                    default: System.out.println("Không hợp lệ.");
                 }
+
             }
-        } catch (Exception e) {
+
+        } catch(Exception e){
             System.out.println("Lỗi kết nối: " + e.getMessage());
         }
     }
 
-    private void closeConnection() {
-        try {
-            if (br != null) br.close();
-        } catch (IOException ignored) {
+    private void closeConnection(){
+        try{
+            if(br!=null)
+                br.close();
         }
-        try {
-            if (is != null) is.close();
-        } catch (IOException ignored) {
-        }
-        try {
-            if (os != null) os.close();
-        } catch (IOException ignored) {
-        }
-        try {
-            if (socket != null && !socket.isClosed()) socket.close();
-        } catch (IOException ignored) {
-        }
+        catch(IOException ignored){}
+
+        try{
+            if(is!=null)
+                is.close();
+        } catch(IOException ignored){}
+
+        try{
+            if(os!=null)
+                os.close();
+        } catch(IOException ignored){}
+
+        try{
+            if(socket!=null && !socket.isClosed()){
+                socket.close();
+            }
+        } catch(IOException ignored){}
+
     }
+
 }
-
-

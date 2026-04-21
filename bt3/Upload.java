@@ -5,7 +5,7 @@ import bt3.Server.FileService;
 
 import java.io.*;
 
-public class Upload implements Command {
+public class Upload extends Command {
     private final ConfigReader config = ConfigReader.getInstance();
 
     @Override

@@ -8,18 +8,21 @@ import bt3.model.PrivateChatMessage;
 import bt3.model.TextMessage;
 
 import java.io.*;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
+import static bt3.common.EventType.*;
+
 public class FileService {
     private final ConfigReader config;
     private final BufferedReader br;
     private final ObjectOutputStream os;
-    private final BlockingQueue<Object> queue;
+    private final BlockingQueue<Socket> queue;
 
-    public FileService(BlockingQueue<Object> queue, ObjectOutputStream os) {
+    public FileService(BlockingQueue<Socket> queue, ObjectOutputStream os) {
         this.config = ConfigReader.getInstance();
         this.os = os;
         this.br = new BufferedReader(new InputStreamReader(System.in));
@@ -173,7 +176,7 @@ public class FileService {
                 String msg = br.readLine().trim();
                 if (msg.equalsIgnoreCase("exit")) break;
                 TextMessage textMessage = new TextMessage(msg);
-                MessageEnvelope envelope = new MessageEnvelope("CHAT", textMessage);
+                MessageEnvelope envelope = new MessageEnvelope(CHAT, textMessage);
 
                 os.writeObject(envelope);
                 os.flush();
@@ -192,7 +195,7 @@ public class FileService {
                     new PrivateChatMessage(receiverId, message);
 
             MessageEnvelope envelope =
-                    new MessageEnvelope("PRIVATE_CHAT", privateChatMessage);
+                    new MessageEnvelope(PRIVATE_CHAT, privateChatMessage);
 
             os.writeObject(envelope);
             os.flush();
@@ -204,7 +207,7 @@ public class FileService {
 
     public void requestClientIds() {
         try {
-            MessageEnvelope envelope = new MessageEnvelope("GET_ID", new PrivateChatMessage(0, ""));
+            MessageEnvelope envelope = new MessageEnvelope(CLIENT_LIST, new PrivateChatMessage(0, ""));
             os.writeObject(envelope);
             os.flush();
         } catch (IOException e) {

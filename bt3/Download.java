@@ -6,14 +6,14 @@ import bt3.Server.FileService;
 import java.io.*;
 
 
-public class Download implements Command {
+public class Download extends Command {
     private final ConfigReader config = ConfigReader.getInstance();
 
 
     @Override
-    public void execute(CommandRequest commandRequest, ObjectOutputStream os, ObjectInputStream is, FileService fileService) throws IOException {
-        String filename = commandRequest.filename();
-        long offset = commandRequest.offset();
+    public void execute(CommandRequest request, ObjectOutputStream os, ObjectInputStream is, FileService fileService) throws IOException {
+        String filename = request.filename();
+        long offset = request.offset();
 
         String filePath = config.getConfig("download.path") + "/" + filename;
         File file = new File(filePath);
