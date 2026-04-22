@@ -15,15 +15,25 @@ public class Download extends Command {
         String filename = request.filename();
         long offset = request.offset();
 
+        if (FileTracker.isLocked(filename)) {
+            MessageEnvelope<?> rejectEnv = new MessageEnvelope<>(
+                    EventType.REJECT,
+                    "File '" + filename + "' đang được cập nhật. Dữ liệu chưa hoàn chỉnh, vui lòng đợi!",
+                    0, request.senderId()
+            );
+            os.writeObject(rejectEnv);
+            os.flush();
+            System.out.println("[Cảnh báo] Từ chối Client " + request.senderId() + " tải file đang bị khóa: " + filename);
+            return;
+        }
+
         String filePath = config.getConfig("download.path") + "/" + filename;
         File file = new File(filePath);
 
         if (!file.exists()) {
             MessageEnvelope<?> rejectEnv = new MessageEnvelope<>(
-                    EventType.REJECT,
-                    "File không tồn tại trên server",
-                    0,
-                    request.senderId()
+                    EventType.REJECT, "File không tồn tại trên server",
+                    0, request.senderId()
             );
             os.writeObject(rejectEnv);
             os.flush();
@@ -32,7 +42,6 @@ public class Download extends Command {
 
         try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
             raf.seek(offset);
-
             byte[] buffer = new byte[1024 * 64];
             int bytes;
 
@@ -50,15 +59,13 @@ public class Download extends Command {
                 chunk.setCompleted(raf.getFilePointer() == raf.length());
 
                 MessageEnvelope<?> envelope = new MessageEnvelope<>(
-                        EventType.FILE_CHUNK,
-                        chunk,
-                        0,
-                        request.senderId()
+                        EventType.FILE_CHUNK, chunk,
+                        0, request.senderId()
                 );
-
                 os.writeObject(envelope);
                 os.flush();
             }
+            System.out.println("Đã gửi xong file " + filename + " cho Client " + request.senderId());
         }
     }
 }

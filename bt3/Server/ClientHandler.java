@@ -66,8 +66,7 @@ public class ClientHandler implements Runnable {
         int receiverId = env.getReceiverId();
 
         if (receiverId == -1) {
-            // LƯU Ý: Bạn cần viết thêm hàm broadcastMessage(env) trong Server.java
-            Server.broadcast(env.getPayload().toString());
+            Server.forwardMessage(env);
         }
         else if (receiverId != 0) {
             Server.forwardMessage(env);

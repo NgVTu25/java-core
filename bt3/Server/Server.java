@@ -50,9 +50,7 @@ public class Server {
     }
 
     public static void broadcast(String message) {
-        TextMessage textMessage = new TextMessage(message, 0, 0);
-        MessageEnvelope<?> event = new ChatMessageEnvelope(textMessage, 0);
-
+        MessageEnvelope<?> event = new MessageEnvelope<>(EventType.CHAT, message, 0, -1);
         for (ClientHandler client : clients) {
             client.sendMessage(event);
         }
@@ -80,6 +78,16 @@ public class Server {
 
     static void main(String[] args) {
         new Server();
+    }
+
+    public static void forwardMessage(MessageEnvelope<?> env) {
+        for (ClientHandler client : clients) {
+            if (client.getClientId() != env.getReceiverId()) {
+                client.sendMessage(env);
+                return;
+            }
+        }
+        privateMessage(env.getSenderId(), "Không tìm thấy Client " + env.getReceiverId());
     }
 
     private void startServer() {
@@ -121,16 +129,6 @@ public class Server {
                 throw new RuntimeException(e);
             }
         }).start();
-    }
-
-    public static void forwardMessage(MessageEnvelope<?> env) {
-        for (ClientHandler client : clients) {
-            if (client.getClientId() == env.getReceiverId()) {
-                client.sendMessage(env);
-                return;
-            }
-        }
-        privateMessage(env.getSenderId(), "Không tìm thấy Client " + env.getReceiverId());
     }
 
     public void acceptConnection() throws IOException {

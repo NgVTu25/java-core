@@ -19,7 +19,7 @@ public class FileService {
     private final BufferedReader br;
     private final ObjectOutputStream os;
     private final int myId;
-
+    public volatile boolean isChatting = false;
     private RandomAccessFile currentDownloadFile;
     private String pendingUploadPath;
 
@@ -38,14 +38,14 @@ public class FileService {
     }
 
     public void requestDownload(String filename) throws IOException {
-        File localFile = new File("client_downloads/" + filename);
+        File localFile = new File(STR."client_downloads/\{filename}");
         localFile.getParentFile().mkdirs();
         long offset = localFile.exists() ? localFile.length() : 0;
 
         CommandRequest request = new CommandRequest(FILE_DOWNLOAD, filename, offset, myId);
         os.writeObject(new MessageEnvelope<>(FILE_DOWNLOAD, request, myId, 0));
         os.flush();
-        System.out.println("Đã yêu cầu tải file: " + filename);
+        System.out.println(STR."Đã yêu cầu tải file: \{filename}");
     }
 
     public void requestUpload(String filePath) throws IOException {
@@ -55,7 +55,7 @@ public class FileService {
             return;
         }
 
-        this.pendingUploadPath = filePath; // Lưu tạm đường dẫn để đợi Server phản hồi ACCEPT
+        this.pendingUploadPath = filePath;
         String filename = localFile.getName();
         long totalSize = localFile.length();
 
@@ -69,13 +69,13 @@ public class FileService {
     public void processIncomingChunk(FileChuck chunk) {
         try {
             if (currentDownloadFile == null) {
-                File file = new File("client_downloads/" + chunk.getFileName());
+                File file = new File(STR."client_downloads/\{chunk.getFileName()}");
                 currentDownloadFile = new RandomAccessFile(file, "rw");
                 currentDownloadFile.seek(chunk.getOffset());
             }
 
             currentDownloadFile.write(chunk.getData());
-            System.out.print("\rĐang tải... " + currentDownloadFile.getFilePointer() + " bytes");
+            System.out.print(STR."\rĐang tải... \{currentDownloadFile.getFilePointer()} bytes");
 
             if (chunk.getCompleted()) {
                 System.out.println("\n[Thành công] Tải file hoàn tất!");
@@ -83,7 +83,7 @@ public class FileService {
                 currentDownloadFile = null;
             }
         } catch (IOException e) {
-            System.err.println("\nLỗi ghi file: " + e.getMessage());
+            System.err.println(STR."Lỗi ghi file: \{e.getMessage()}");
         }
     }
 
@@ -119,23 +119,28 @@ public class FileService {
                     chunkCount++;
                     if (chunkCount % 100 == 0) os.reset(); // Dọn rác cache Stream
 
-                    System.out.print("\rĐã gửi: " + raf.getFilePointer() + " / " + totalSize + " bytes");
+                    System.out.print(STR."\rĐã gửi: \{raf.getFilePointer()} / \{totalSize} bytes");
                 }
                 System.out.println("\n[Upload Thành Công]");
                 pendingUploadPath = null;
             } catch (Exception e) {
-                System.out.println("\n[Lỗi Upload] Mất mạng: " + e.getMessage());
+                System.out.println(STR."[Lỗi Upload] Mất mạng: \{e.getMessage()}");
             }
         }).start();
     }
 
 
     public void chatMode() throws IOException {
-        System.out.println("--- CHẾ ĐỘ NHẮN TIN (Gõ 'exit' để thoát) ---");
+        System.out.println("--- CHẾ ĐỘ NHẮN TIN (Gõ 'exit' để quay lại Menu) ---");
+        this.isChatting = true;
+
         while (true) {
             System.out.print("Bạn: ");
             String msg = br.readLine().trim();
-            if (msg.equalsIgnoreCase("exit")) break;
+            if (msg.equalsIgnoreCase("exit")) {
+                this.isChatting = false;
+                break;
+            }
 
             TextMessage textMessage = new TextMessage(msg, myId, 0);
             MessageEnvelope<?> envelope = new ChatMessageEnvelope(textMessage, myId);
@@ -153,7 +158,7 @@ public class FileService {
             os.writeObject(envelope);
             os.flush();
         } catch (IOException e) {
-            System.err.println("Lỗi gửi private chat: " + e.getMessage());
+            System.err.println(STR."Lỗi gửi private chat: \{e.getMessage()}");
         }
     }
 
@@ -163,7 +168,7 @@ public class FileService {
             os.writeObject(new MessageEnvelope<>(CLIENT_LIST, request, myId, 0));
             os.flush();
         } catch (IOException e) {
-            System.err.println("Lỗi yêu cầu danh sách: " + e.getMessage());
+            System.err.println(STR."Lỗi yêu cầu danh sách: \{e.getMessage()}");
         }
     }
 

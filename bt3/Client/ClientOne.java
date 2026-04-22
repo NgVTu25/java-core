@@ -18,7 +18,7 @@ public class ClientOne implements Runnable {
     private FileService fileService;
     private int myId = -1;
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         new Thread(new ClientOne()).start();
     }
 
@@ -60,7 +60,7 @@ public class ClientOne implements Runnable {
         switch (type) {
             case CHAT, PRIVATE_CHAT -> {
                 System.out.println("\n[Tin nhắn]: " + payload);
-                reprintPrompt();
+                reprintMenu();
             }
 
             case FILE_CHUNK -> {
@@ -71,7 +71,7 @@ public class ClientOne implements Runnable {
                 if (payload instanceof List<?> files) {
                     System.out.println("\n--- Danh sách file trên Server ---");
                     files.forEach(f -> System.out.println(" - " + f));
-                    reprintPrompt();
+                    reprintMenu();
                 }
             }
 
@@ -90,7 +90,7 @@ public class ClientOne implements Runnable {
                             }
                         }
                     }
-                    reprintPrompt();
+                    reprintMenu();
                 } else {
                     System.out.println("\n[Lỗi] Dữ liệu Client List không hợp lệ.");
                 }
@@ -109,7 +109,7 @@ public class ClientOne implements Runnable {
 
             case REJECT -> {
                 System.out.println("\n[Server Từ Chối]: " + payload);
-                reprintPrompt();
+                reprintMenu();
             }
 
             case SERVER_FULL, STOP -> {
@@ -121,8 +121,7 @@ public class ClientOne implements Runnable {
         }
     }
 
-    // Hàm in lại dấu nhắc nhập liệu cho giao diện đẹp hơn
-    private void reprintPrompt() {
+    private void reprintMenu() {
         System.out.print("\nChọn (1-7): ");
     }
 
@@ -167,11 +166,14 @@ public class ClientOne implements Runnable {
 
                     case "5" -> {
                         System.out.print("Nhập ID người nhận: ");
+                        String msg = "";
                         try {
                             int receiverId = Integer.parseInt(br.readLine().trim());
+                            do {
                             System.out.print("Nhập tin nhắn: ");
-                            String msg = br.readLine().trim();
+                            msg = br.readLine().trim();
                             fileService.clientToClient(receiverId, msg);
+                            } while (!msg.isEmpty() || !msg.equalsIgnoreCase("exit"));
                         } catch (NumberFormatException e) {
                             System.out.println("ID phải là số!");
                         }

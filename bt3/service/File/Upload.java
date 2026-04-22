@@ -15,64 +15,74 @@ public class Upload extends Command {
         String filename = request.filename();
         long clientFileSize = request.offset();
 
-        String savePath = config.getConfig("download.path") + "/" + filename;
-        File file = new File(savePath);
-
-        long currentOffset = 0;
-
-        if (file.exists()) {
-            currentOffset = file.length();
-            if (currentOffset >= clientFileSize && clientFileSize > 0) {
-                // Bọc lệnh REJECT
-                MessageEnvelope<?> rejectEnv = new MessageEnvelope<>(
-                        EventType.REJECT,
-                        "File đã tồn tại hoàn chỉnh trên Server",
-                        0,
-                        request.senderId()
-                );
-                os.writeObject(rejectEnv);
-                os.flush();
-                return;
-            }
-        } else {
-            file.getParentFile().mkdirs();
+        if (!FileTracker.tryLock(filename)) {
+            MessageEnvelope<?> rejectEnv = new MessageEnvelope<>(
+                    EventType.REJECT,
+                    "File '" + filename + "' đang được Client khác cập nhật. Vui lòng thử lại sau!",
+                    0, request.senderId()
+            );
+            os.writeObject(rejectEnv);
+            os.flush();
+            System.out.println("[Cảnh báo] Chặn Client " + request.senderId() + " ghi đè file đang khóa: " + filename);
+            return;
         }
 
-        MessageEnvelope<?> acceptEnv = new MessageEnvelope<>(
-                EventType.ACCEPT,
-                "ACCEPT|" + currentOffset,
-                0,
-                request.senderId()
-        );
-        os.writeObject(acceptEnv);
-        os.flush();
+        try {
+            String savePath = config.getConfig("download.path") + "/" + filename;
+            File file = new File(savePath);
+            long currentOffset = 0;
 
-        try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
-            raf.seek(currentOffset);
-            Object receivedData;
+            if (file.exists()) {
+                currentOffset = file.length();
+                if (currentOffset >= clientFileSize && clientFileSize > 0) {
+                    MessageEnvelope<?> rejectEnv = new MessageEnvelope<>(
+                            EventType.REJECT, "File đã tồn tại hoàn chỉnh trên Server",
+                            0, request.senderId()
+                    );
+                    os.writeObject(rejectEnv);
+                    os.flush();
+                    return;
+                }
+            } else {
+                file.getParentFile().mkdirs();
+            }
 
-            System.out.println("Đang nhận file " + filename + " từ offset: " + currentOffset);
+            MessageEnvelope<?> acceptEnv = new MessageEnvelope<>(
+                    EventType.ACCEPT, "ACCEPT|" + currentOffset,
+                    0, request.senderId()
+            );
+            os.writeObject(acceptEnv);
+            os.flush();
 
-            while (true) {
-                receivedData = is.readObject();
+            try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+                raf.seek(currentOffset);
+                System.out.println("Đang nhận file " + filename + " từ Client " + request.senderId());
 
-                if (receivedData instanceof MessageEnvelope<?> env) {
-                    if (env.getType() == EventType.FILE_CHUNK && env.getPayload() instanceof FileChuck chunk) {
-                        raf.write(chunk.getData());
+                while (true) {
+                    Object receivedData = is.readObject();
 
-                        if (chunk.getCompleted()) {
-                            System.out.println(">>> Đã nhận hoàn tất file: " + filename + " từ Client " + request.senderId());
+                    if (receivedData instanceof MessageEnvelope<?> env) {
+                        if (env.getType() == EventType.FILE_CHUNK && env.getPayload() instanceof FileChuck chunk) {
+                            raf.write(chunk.getData());
+
+                            if (chunk.getCompleted()) {
+                                System.out.println(">>> Đã nhận hoàn tất file: " + filename);
+                                break;
+                            }
+                        } else if (env.getPayload() instanceof String msg && msg.equalsIgnoreCase("CANCEL")) {
+                            System.out.println("Client hủy Upload giữa chừng.");
                             break;
                         }
-                    } else if (env.getPayload() instanceof String msg && msg.equalsIgnoreCase("CANCEL")) {
-                        break;
                     }
                 }
             }
         } catch (EOFException e) {
-            System.out.println("Client đột ngột ngắt kết nối khi đang Upload.");
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            System.out.println("Client đột ngột ngắt kết nối khi đang Upload file " + filename);
+        } catch (Exception e) {
+            System.out.println("Lỗi quá trình Upload: " + e.getMessage());
+        } finally {
+            FileTracker.unlock(filename);
+            System.out.println("[Hệ thống] Đã giải phóng file: " + filename);
         }
     }
 }

@@ -14,11 +14,10 @@ public class Client implements Runnable {
 	private ObjectInputStream is;
 	private ObjectOutputStream os;
 	private Socket socket;
-	private BufferedReader br;
 	private FileService fileService;
 	private int myId = -1;
 
-	public static void main(String[] args) {
+	static void main(String[] args) {
 		new Thread(new Client()).start();
 	}
 
@@ -60,7 +59,7 @@ public class Client implements Runnable {
 		switch (type) {
 			case CHAT, PRIVATE_CHAT -> {
 				System.out.println("\n[Tin nhắn]: " + payload);
-				reprintPrompt();
+				reprintMenu();
 			}
 
 			case FILE_CHUNK -> {
@@ -71,11 +70,10 @@ public class Client implements Runnable {
 				if (payload instanceof List<?> files) {
 					System.out.println("\n--- Danh sách file trên Server ---");
 					files.forEach(f -> System.out.println(" - " + f));
-					reprintPrompt();
+					reprintMenu();
 				}
 			}
 
-			// XỬ LÝ LỆNH LẤY DANH SÁCH ID (An toàn)
 			case CLIENT_LIST -> {
 				if (payload instanceof List<?> ids) {
 					System.out.println("\n\n--- DANH SÁCH ID CLIENT ĐANG HOẠT ĐỘNG ---");
@@ -90,7 +88,7 @@ public class Client implements Runnable {
 							}
 						}
 					}
-					reprintPrompt();
+					reprintMenu();
 				} else {
 					System.out.println("\n[Lỗi] Dữ liệu Client List không hợp lệ.");
 				}
@@ -109,7 +107,7 @@ public class Client implements Runnable {
 
 			case REJECT -> {
 				System.out.println("\n[Server Từ Chối]: " + payload);
-				reprintPrompt();
+				reprintMenu();
 			}
 
 			case SERVER_FULL, STOP -> {
@@ -121,14 +119,13 @@ public class Client implements Runnable {
 		}
 	}
 
-	// Hàm in lại dấu nhắc nhập liệu cho giao diện đẹp hơn
-	private void reprintPrompt() {
+	private void reprintMenu() {
 		System.out.print("\nChọn (1-7): ");
 	}
 
 	private void startUserInterface() {
 		try {
-			br = new BufferedReader(new InputStreamReader(System.in));
+			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
 			System.out.print("Đang chờ cấp phát ID từ Server...");
 			while (myId == -1) {
@@ -167,11 +164,14 @@ public class Client implements Runnable {
 
 					case "5" -> {
 						System.out.print("Nhập ID người nhận: ");
+						String msg = "";
 						try {
 							int receiverId = Integer.parseInt(br.readLine().trim());
-							System.out.print("Nhập tin nhắn: ");
-							String msg = br.readLine().trim();
+							do {
+								System.out.print("Nhập tin nhắn: ");
+								msg = br.readLine().trim();
 							fileService.clientToClient(receiverId, msg);
+							} while (!msg.isEmpty() || !msg.equalsIgnoreCase("exit"));
 						} catch (NumberFormatException e) {
 							System.out.println("ID phải là số!");
 						}
