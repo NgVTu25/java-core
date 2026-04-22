@@ -1,7 +1,9 @@
-package bt3;
+package bt3.service.File;
 
+import bt3.ConfigReader;
+import bt3.common.EventType;
 import bt3.model.FileChuck;
-import bt3.Server.FileService;
+import bt3.service.Chat.MessageEnvelope;
 
 import java.io.*;
 
@@ -21,7 +23,14 @@ public class Upload extends Command {
         if (file.exists()) {
             currentOffset = file.length();
             if (currentOffset >= clientFileSize && clientFileSize > 0) {
-                os.writeObject("REJECT: File đã tồn tại hoàn chỉnh trên Server");
+                // Bọc lệnh REJECT
+                MessageEnvelope<?> rejectEnv = new MessageEnvelope<>(
+                        EventType.REJECT,
+                        "File đã tồn tại hoàn chỉnh trên Server",
+                        0,
+                        request.senderId()
+                );
+                os.writeObject(rejectEnv);
                 os.flush();
                 return;
             }
@@ -29,7 +38,13 @@ public class Upload extends Command {
             file.getParentFile().mkdirs();
         }
 
-        os.writeObject("ACCEPT|" + currentOffset);
+        MessageEnvelope<?> acceptEnv = new MessageEnvelope<>(
+                EventType.ACCEPT,
+                "ACCEPT|" + currentOffset,
+                0,
+                request.senderId()
+        );
+        os.writeObject(acceptEnv);
         os.flush();
 
         try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
@@ -41,17 +56,17 @@ public class Upload extends Command {
             while (true) {
                 receivedData = is.readObject();
 
-                if (receivedData instanceof FileChuck chunk) {
+                if (receivedData instanceof MessageEnvelope<?> env) {
+                    if (env.getType() == EventType.FILE_CHUNK && env.getPayload() instanceof FileChuck chunk) {
+                        raf.write(chunk.getData());
 
-                    raf.write(chunk.getData());
-
-                    if (chunk.getCompleted()) {
-                        System.out.println(">>> Đã nhận hoàn tất file: " + filename);
+                        if (chunk.getCompleted()) {
+                            System.out.println(">>> Đã nhận hoàn tất file: " + filename + " từ Client " + request.senderId());
+                            break;
+                        }
+                    } else if (env.getPayload() instanceof String msg && msg.equalsIgnoreCase("CANCEL")) {
                         break;
                     }
-                }
-                else if (receivedData instanceof String msg) {
-                    if (msg.equalsIgnoreCase("CANCEL")) break;
                 }
             }
         } catch (EOFException e) {

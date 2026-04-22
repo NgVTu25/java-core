@@ -1,10 +1,11 @@
 package bt3.Server;
 
+import bt3.service.Chat.ChatMessageEnvelope;
 import bt3.ConfigReader;
-import bt3.MessageEnvelope;
-import bt3.common.EventType;
+import bt3.service.Chat.MessageEnvelope;
 import bt3.model.PrivateChatMessage;
 import bt3.model.TextMessage;
+import bt3.common.EventType;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -49,12 +50,8 @@ public class Server {
     }
 
     public static void broadcast(String message) {
-
-        MessageEnvelope event =
-                new MessageEnvelope(
-                        EventType.CHAT,
-                        new TextMessage(message)
-                );
+        TextMessage textMessage = new TextMessage(message, 0, 0);
+        MessageEnvelope<?> event = new ChatMessageEnvelope(textMessage, 0);
 
         for (ClientHandler client : clients) {
             client.sendMessage(event);
@@ -64,17 +61,8 @@ public class Server {
     public static void privateMessage(int id, String message) {
         for (ClientHandler client : clients) {
             if (client.getClientId() == id) {
-                client.sendMessage(
-
-                        new MessageEnvelope(
-                                EventType.PRIVATE_CHAT,
-                                new PrivateChatMessage(
-                                        id,
-                                        message
-                                )
-                        )
-
-                );
+                PrivateChatMessage pcm = new PrivateChatMessage(id, message);
+                client.sendMessage(new ChatMessageEnvelope(pcm, 0));
                 return;
             }
         }
@@ -90,7 +78,7 @@ public class Server {
         System.out.println("Đã xóa client id = " + clientHandler.getClientId());
     }
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         new Server();
     }
 
@@ -107,14 +95,8 @@ public class Server {
                     if (message == null) break;
 
                     if (message.equalsIgnoreCase("stop")) {
-                        for(ClientHandler c:clients){
-
-                            c.sendMessage(
-                                    new MessageEnvelope(
-                                            EventType.STOP,
-                                            null
-                                    )
-                            );
+                        for(ClientHandler c : clients){
+                            c.sendMessage(new MessageEnvelope<>(EventType.STOP, "Server đang tắt. Kết nối sẽ bị ngắt.", 0, c.getClientId()));
                         }
                         System.exit(0);
                     }
@@ -134,12 +116,21 @@ public class Server {
                     } else {
                         broadcast("[Server]: " + message);
                     }
-                    System.out.println(queue.remainingCapacity());
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }).start();
+    }
+
+    public static void forwardMessage(MessageEnvelope<?> env) {
+        for (ClientHandler client : clients) {
+            if (client.getClientId() == env.getReceiverId()) {
+                client.sendMessage(env);
+                return;
+            }
+        }
+        privateMessage(env.getSenderId(), "Không tìm thấy Client " + env.getReceiverId());
     }
 
     public void acceptConnection() throws IOException {
@@ -154,24 +145,28 @@ public class Server {
                 clientId = random.nextInt(15, 999999);
             } while (clientIds.contains(clientId));
 
-            ClientHandler clientHandler = new ClientHandler(clientSocket, clientId, queue);
+            ClientHandler clientHandler = new ClientHandler(clientSocket, clientId);
 
             if (queue.remainingCapacity() == 0) {
-                clientHandler.sendMessage(new MessageEnvelope(EventType.REJECT, new TextMessage("Server đầy.")));
+                MessageEnvelope<?> fullMsg = new MessageEnvelope<>(EventType.SERVER_FULL, "Server đầy.", 0, clientId);
+                clientHandler.sendMessage(fullMsg);
                 try {
                     clientSocket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
                 System.out.println("Đã từ chối kết nối mới (Server full).");
             } else {
                 queue.add(clientSocket);
                 clients.add(clientHandler);
                 clientIds.add(clientId);
 
-                clientHandler.sendMessage(new MessageEnvelope(EventType.ACCEPT, new TextMessage("ID: " + clientId)));
+                MessageEnvelope<?> idMsg = new MessageEnvelope<>(EventType.ACCEPT, clientId, 0, clientId);
+                clientHandler.sendMessage(idMsg);
+
                 new Thread(clientHandler).start();
+
+                broadcast("[Hệ thống] Client mới đã tham gia với ID: " + clientId);
             }
         }
     }

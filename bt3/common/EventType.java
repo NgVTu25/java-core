@@ -22,5 +22,9 @@ public enum EventType implements Serializable {
 
     SERVER_FULL,
 
-    LIST_FILE
+    LIST_FILE,
+
+    FILE_CHUNK,
+
+    UNKNOWN
 }

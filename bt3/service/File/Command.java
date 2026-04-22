@@ -1,6 +1,5 @@
-package bt3;
+package bt3.service.File;
 
-import bt3.Server.FileService;
 import bt3.common.EventType;
 import bt3.model.TextMessage;
 

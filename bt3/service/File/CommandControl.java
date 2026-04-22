@@ -1,4 +1,4 @@
-package bt3;
+package bt3.service.File;
 
 import bt3.common.EventType;
 
@@ -13,6 +13,9 @@ public class CommandControl {
         }
         if (requestHeader.equals(EventType.LIST_FILE.name())) {
             return new Check();
+        }
+        if (requestHeader.equals(EventType.CLIENT_LIST.name())) {
+            return new ClientList();
         }
         return null;
     }

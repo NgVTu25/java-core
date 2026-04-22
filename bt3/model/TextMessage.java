@@ -1,4 +1,4 @@
 package bt3.model;
 
-public record TextMessage(String content) implements MessagePayload {
+public record TextMessage(String content, int senderId, int receiverId) implements MessagePayload {
 }

@@ -1,14 +1,14 @@
-package bt3;
+package bt3.service.File;
 
+import bt3.ConfigReader;
+import bt3.common.EventType;
 import bt3.model.FileChuck;
-import bt3.Server.FileService;
+import bt3.service.Chat.MessageEnvelope;
 
 import java.io.*;
 
-
 public class Download extends Command {
     private final ConfigReader config = ConfigReader.getInstance();
-
 
     @Override
     public void execute(CommandRequest request, ObjectOutputStream os, ObjectInputStream is, FileService fileService) throws IOException {
@@ -19,13 +19,16 @@ public class Download extends Command {
         File file = new File(filePath);
 
         if (!file.exists()) {
-            FileChuck rejectChunk = new FileChuck();
-            rejectChunk.setStatus("REJECT: File không tồn tại trên server");
-            os.writeObject(rejectChunk);
+            MessageEnvelope<?> rejectEnv = new MessageEnvelope<>(
+                    EventType.REJECT,
+                    "File không tồn tại trên server",
+                    0,
+                    request.senderId()
+            );
+            os.writeObject(rejectEnv);
             os.flush();
             return;
         }
-
 
         try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
             raf.seek(offset);
@@ -46,7 +49,14 @@ public class Download extends Command {
                 offset += bytes;
                 chunk.setCompleted(raf.getFilePointer() == raf.length());
 
-                os.writeObject(chunk);
+                MessageEnvelope<?> envelope = new MessageEnvelope<>(
+                        EventType.FILE_CHUNK,
+                        chunk,
+                        0,
+                        request.senderId()
+                );
+
+                os.writeObject(envelope);
                 os.flush();
             }
         }

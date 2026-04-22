@@ -1,17 +1,13 @@
 package bt3.Server;
 
-import bt3.*;
-import bt3.common.EventType;
-import bt3.model.PrivateChatMessage;
-import bt3.model.TextMessage;
+import bt3.service.Chat.MessageEnvelope;
+import bt3.service.File.*;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.List;
-import java.util.concurrent.BlockingQueue;
 
 import static bt3.common.EventType.*;
 
@@ -19,109 +15,73 @@ public class ClientHandler implements Runnable {
 
     private final Socket socket;
     private final int clientId;
-
-    private final BlockingQueue<Socket> queue;
-    private static BlockingQueue<MessageEnvelope> messageQueue;
-
     private ObjectOutputStream os;
     private ObjectInputStream is;
+    private FileService fileService;
 
-    public ClientHandler(Socket socket, int clientId, BlockingQueue<Socket> queue) {
+    public ClientHandler(Socket socket, int clientId) {
         this.socket = socket;
         this.clientId = clientId;
-        this.queue = queue;
 
         try {
             this.os = new ObjectOutputStream(socket.getOutputStream());
             this.os.flush();
+            this.fileService = new FileService(this.os, clientId);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Lỗi khởi tạo luồng Output cho Client " + clientId);
         }
     }
 
     @Override
     public void run() {
         try {
-            is = new ObjectInputStream(socket.getInputStream());
-            FileService fileService = new FileService(queue, os);
+            this.is = new ObjectInputStream(socket.getInputStream());
 
             while (true) {
-                try {
-                    Object receivedData = is.readObject();
+                Object receivedData = is.readObject();
 
-                    if (receivedData instanceof CommandRequest request) {
-                        handleCommandRequest(request, fileService);
-                    } else if (receivedData instanceof MessageEnvelope env) {
+                if (receivedData instanceof MessageEnvelope<?> env) {
 
-                        if (env.type() == STOP) {
-                            System.out.println("Client yêu cầu ngắt kết nối.");
-                            break;
-                        }
-                        handleMessageEnvelope(env);
-                    }
-                    else {
-                        messageQueue.put(new MessageEnvelope(EventType.CHAT, receivedData));
+                    if (env.getType() == STOP) {
+                        System.out.println("Client " + clientId + " yêu cầu ngắt kết nối.");
+                        break;
                     }
 
-                } catch (Exception e) {
-                    System.out.println("Lỗi xử lý luồng nhận: " + e.getMessage());
-                    break;
+                    handleMessageEnvelope(env);
+
+                } else {
+                    System.out.println("Cảnh báo: Nhận được dữ liệu không bọc trong MessageEnvelope từ Client " + clientId);
                 }
             }
-        }
-        catch (EOFException e) {
-            System.out.println(
-                    "Kết nối với client đã đóng."
-            );
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-        finally {
+        } catch (EOFException e) {
+            System.out.println("Kết nối với Client " + clientId + " đã đóng.");
+        } catch (Exception e) {
+            System.out.println("Lỗi xử lý luồng nhận từ Client " + clientId + ": " + e.getMessage());
+        } finally {
             disconnect();
         }
     }
 
+    private void handleMessageEnvelope(MessageEnvelope<?> env) {
+        int receiverId = env.getReceiverId();
 
-    private void handleMessageEnvelope(MessageEnvelope env) {
-
-        switch (env.type()) {
-
-            case CHAT -> {
-                TextMessage textMessage = (TextMessage) env.payload();
-                System.out.println("\n[Global] Client " + clientId + ": " + textMessage.content());
+        if (receiverId == -1) {
+            // LƯU Ý: Bạn cần viết thêm hàm broadcastMessage(env) trong Server.java
+            Server.broadcast(env.getPayload().toString());
+        }
+        else if (receiverId != 0) {
+            Server.forwardMessage(env);
+        }
+        else {
+            if (env.getPayload() instanceof CommandRequest req) {
+                handleCommandRequest(req);
+            } else {
+                System.out.println("Server nhận được payload không phải CommandRequest từ Client " + clientId);
             }
-
-
-            case PRIVATE_CHAT -> {
-                PrivateChatMessage message = (PrivateChatMessage) env.payload();
-                Server.privateMessage(message.receiverId(), "[Client " + clientId + "]: " + message.content()
-                );
-            }
-
-
-            case CLIENT_LIST -> {
-                List<Integer> clientIds = Server.getClientIds();
-                Server.privateMessage(clientId, "Danh sách client IDs: " + clientIds);
-            }
-
-
-            case ACCEPT -> System.out.println("Upload được chấp nhận");
-
-
-            case REJECT -> System.out.println("Upload bị từ chối");
-
-
-            case FILE_UPLOAD -> System.out.println("Nhận event upload file");
-
-            case FILE_DOWNLOAD -> System.out.println("Nhận event download file");
-
-            default -> System.out.println("Unknown event: " + env.type());
         }
     }
 
-
-    private void handleCommandRequest(CommandRequest request, FileService fileService) {
+    private void handleCommandRequest(CommandRequest request) {
         try {
             Command command = CommandControl.getCommand(String.valueOf(request.commandType()));
 
@@ -131,31 +91,30 @@ public class ClientHandler implements Runnable {
                 System.err.println("Lệnh không hỗ trợ: " + request.commandType());
             }
         } catch (Exception e) {
-            System.err.println("Lỗi thực thi lệnh: " + e.getMessage());
+            System.err.println("Lỗi thực thi lệnh từ Client " + clientId + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    public void sendMessage(MessageEnvelope event) {
+    public void sendMessage(MessageEnvelope<?> event) {
         try {
             os.writeObject(event);
             os.flush();
+            os.reset();
         } catch (IOException e) {
             System.out.println("Lỗi gửi tới client " + clientId);
         }
     }
 
-
     private void disconnect() {
         Server.removeClient(this);
-
         try {
             if (is != null) is.close();
             if (os != null) os.close();
             if (socket != null && !socket.isClosed()) {
                 socket.close();
             }
-        } catch (IOException ignored) {
-        }
+        } catch (IOException ignored) {}
     }
 
     public int getClientId() {
